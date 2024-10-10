@@ -24,9 +24,9 @@ suspend fun main() {
         sleep(600000)
         val channelCountry = extractCountryCode(bot.getChat(System.getenv("CHANEL_ID").toLong().toChatId()).asChannelChat()!!.title)
         val currentCountry = getCurrentCountry()!!
-
+        KSLog.info("Current $channelCountry channel $channelCountry")
         if (channelCountry == currentCountry) {
-            KSLog.info("don't need to update country. Current country: $currentCountry")
+            KSLog.info("don't need to update country.")
             continue
         }
 
