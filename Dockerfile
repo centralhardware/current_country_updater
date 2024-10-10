@@ -2,7 +2,7 @@ FROM gradle:jdk22 as gradle
 
 COPY ./ ./
 
-RUN gradle shadowJar
+RUN gradle fatJar
 
 FROM openjdk:22-slim
 
