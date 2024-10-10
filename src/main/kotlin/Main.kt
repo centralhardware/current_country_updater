@@ -1,5 +1,3 @@
-package me.centralhardware.telegram
-
 import com.clickhouse.jdbc.ClickHouseDataSource
 import com.neovisionaries.i18n.CountryCode
 import dev.inmo.kslog.common.KSLog
