@@ -21,12 +21,12 @@ suspend fun main() {
     val bot = telegramBot(System.getenv("BOT_TOKEN"))
     HealthCheck.addBot(bot)
     while (true) {
-        sleep(600000)
         val channelCountry = extractCountryCode(bot.getChat(System.getenv("CHANEL_ID").toLong().toChatId()).asChannelChat()!!.title)
         val currentCountry = getCurrentCountry()!!
         KSLog.info("Current $channelCountry channel $channelCountry")
         if (channelCountry == currentCountry) {
             KSLog.info("don't need to update country.")
+            sleep(600000)
             continue
         }
 
@@ -35,6 +35,7 @@ suspend fun main() {
             System.getenv("CHANEL_TITLE_PATTERN").format(countryCodeToEmoji(currentCountry))
         )
         KSLog.info("Change country to $currentCountry")
+        sleep(600000)
     }
 }
 
