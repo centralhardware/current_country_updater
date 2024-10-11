@@ -4,6 +4,7 @@ import dev.inmo.kslog.common.KSLog
 import dev.inmo.kslog.common.configure
 import dev.inmo.kslog.common.info
 import dev.inmo.tgbotapi.HealthCheck
+import dev.inmo.tgbotapi.botToken
 import dev.inmo.tgbotapi.extensions.api.chat.get.getChat
 import dev.inmo.tgbotapi.extensions.api.chat.modify.setChatTitle
 import dev.inmo.tgbotapi.extensions.api.telegramBot
@@ -18,7 +19,7 @@ import javax.sql.DataSource
 
 suspend fun main() {
     KSLog.configure("current_country_updater")
-    val bot = telegramBot(System.getenv("BOT_TOKEN"))
+    val bot = telegramBot(botToken)
     HealthCheck.addBot(bot)
     while (true) {
         val channelCountry = extractCountryCode(bot.getChat(System.getenv("CHANEL_ID").toLong().toChatId()).asChannelChat()!!.title)
