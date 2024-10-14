@@ -1,14 +1,12 @@
 import com.clickhouse.jdbc.ClickHouseDataSource
 import com.neovisionaries.i18n.CountryCode
 import dev.inmo.kslog.common.KSLog
-import dev.inmo.kslog.common.configure
 import dev.inmo.kslog.common.info
-import dev.inmo.tgbotapi.HealthCheck
-import dev.inmo.tgbotapi.botToken
+import dev.inmo.tgbotapi.AppConfig
 import dev.inmo.tgbotapi.extensions.api.chat.get.getChat
 import dev.inmo.tgbotapi.extensions.api.chat.modify.setChatTitle
-import dev.inmo.tgbotapi.extensions.api.telegramBot
 import dev.inmo.tgbotapi.extensions.utils.asChannelChat
+import dev.inmo.tgbotapi.longPolling
 import dev.inmo.tgbotapi.types.toChatId
 import kotliquery.queryOf
 import kotliquery.sessionOf
@@ -18,9 +16,8 @@ import java.sql.SQLException
 import javax.sql.DataSource
 
 suspend fun main() {
-    KSLog.configure("current_country_updater")
-    val bot = telegramBot(botToken)
-    HealthCheck.addBot(bot)
+    AppConfig.init("current_country_updater")
+    val bot = longPolling {}.first
     while (true) {
         val channelCountry = extractCountryCode(bot.getChat(System.getenv("CHANEL_ID").toLong().toChatId()).asChannelChat()!!.title)
         val currentCountry = getCurrentCountry()!!
