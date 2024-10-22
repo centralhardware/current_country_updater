@@ -12,7 +12,7 @@ repositories {
 
 dependencies {
     implementation("dev.inmo:tgbotapi:18.2.2")
-    implementation("com.github.centralhardware:telegram-bot-commons:89ec8f5599")
+    implementation("com.github.centralhardware:telegram-bot-commons:cc1472911c")
 
     implementation("dev.inmo:krontab:2.5.0")
 
