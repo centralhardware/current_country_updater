@@ -1,0 +1,21 @@
+name: build
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4.1.1
+    - name: setup
+      uses: actions/setup-java@v4.0.0
+      with:
+        java-version: '22'
+        distribution: 'temurin'
+        cache: gradle
+    - name: build
+      run: gradle fatJar
