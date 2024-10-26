@@ -8,18 +8,21 @@ import dev.inmo.tgbotapi.extensions.api.chat.modify.setChatTitle
 import dev.inmo.tgbotapi.extensions.utils.asChannelChat
 import dev.inmo.tgbotapi.longPolling
 import dev.inmo.tgbotapi.types.toChatId
-import kotliquery.queryOf
-import kotliquery.sessionOf
-import net.fellbaum.jemoji.EmojiManager
 import java.lang.Thread.sleep
 import java.sql.SQLException
 import javax.sql.DataSource
+import kotliquery.queryOf
+import kotliquery.sessionOf
+import net.fellbaum.jemoji.EmojiManager
 
 suspend fun main() {
     AppConfig.init("current_country_updater")
     val bot = longPolling {}.first
     while (true) {
-        val channelCountry = extractCountryCode(bot.getChat(System.getenv("CHANEL_ID").toLong().toChatId()).asChannelChat()!!.title)
+        val channelCountry =
+            extractCountryCode(
+                bot.getChat(System.getenv("CHANEL_ID").toLong().toChatId()).asChannelChat()!!.title
+            )
         val currentCountry = getCurrentCountry()!!
         KSLog.info("Current $currentCountry channel $channelCountry")
         if (channelCountry == currentCountry) {
@@ -53,15 +56,24 @@ fun countryCodeToEmoji(country: String): String {
     return String(Character.toChars(firstChar)) + String(Character.toChars(secondChar))
 }
 
-val dataSource: DataSource = try {
-    ClickHouseDataSource(System.getenv("CLICKHOUSE_URL"))
-} catch (e: SQLException) {
-    throw RuntimeException(e)
-}
-fun getCurrentCountry() = sessionOf(dataSource).run(queryOf(
-    """
+val dataSource: DataSource =
+    try {
+        ClickHouseDataSource(System.getenv("CLICKHOUSE_URL"))
+    } catch (e: SQLException) {
+        throw RuntimeException(e)
+    }
+
+fun getCurrentCountry() =
+    sessionOf(dataSource)
+        .run(
+            queryOf(
+                    """
             SELECT lower(country) as country
             FROM  country_days_tracker_bot.country_days_tracker
             ORDER BY date_time DESC
             LIMIT 1
-         """).map { it.string("country") }.asSingle)
+         """
+                )
+                .map { it.string("country") }
+                .asSingle
+        )
