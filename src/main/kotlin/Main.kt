@@ -33,7 +33,7 @@ suspend fun main() {
 
         bot.setChatTitle(
             System.getenv("CHANEL_ID").toLong().toChatId(),
-            System.getenv("CHANEL_TITLE_PATTERN").format(countryCodeToEmoji(currentCountry))
+            System.getenv("CHANEL_TITLE_PATTERN").format(countryCodeToEmoji(currentCountry)),
         )
         KSLog.info("Change country to $currentCountry")
         sleep(600000)
