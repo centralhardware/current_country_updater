@@ -23,4 +23,4 @@ jobs:
           distribution: 'temurin'
 
       - name: Run ktfmt check
-        run: ./gradlew ktfmtCheckc
+        run: ./gradlew ktfmtCheck
