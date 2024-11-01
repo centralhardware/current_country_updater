@@ -15,8 +15,8 @@ repositories {
 }
 
 dependencies {
-    implementation("dev.inmo:tgbotapi:19.0.0")
-    implementation("com.github.centralhardware:telegram-bot-commons:176180cebd")
+    implementation("dev.inmo:tgbotapi:20.0.0")
+    implementation("com.github.centralhardware:telegram-bot-commons:6ecbc09850")
 
     implementation("dev.inmo:krontab:2.5.0")
 
