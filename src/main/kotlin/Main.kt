@@ -2,6 +2,7 @@ import com.clickhouse.jdbc.ClickHouseDataSource
 import com.neovisionaries.i18n.CountryCode
 import dev.inmo.kslog.common.KSLog
 import dev.inmo.kslog.common.info
+import dev.inmo.micro_utils.common.Warning
 import dev.inmo.tgbotapi.AppConfig
 import dev.inmo.tgbotapi.extensions.api.chat.get.getChat
 import dev.inmo.tgbotapi.extensions.api.chat.modify.setChatTitle
@@ -15,6 +16,8 @@ import kotliquery.queryOf
 import kotliquery.sessionOf
 import net.fellbaum.jemoji.EmojiManager
 
+@OptIn(Warning::class)
+@Suppress("BlockingMethodInNonBlockingContext")
 suspend fun main() {
     AppConfig.init("current_country_updater")
     val bot = longPolling {}.first

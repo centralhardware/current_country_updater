@@ -16,12 +16,13 @@ repositories {
 
 dependencies {
     implementation("dev.inmo:tgbotapi:20.0.0")
-    implementation("com.github.centralhardware:telegram-bot-commons:f950fa2e33")
+    implementation("com.github.centralhardware:telegram-bot-commons:726ea775d5")
 
     implementation("dev.inmo:krontab:2.6.0")
 
     implementation("org.apache.httpcomponents.client5:httpclient5:5.4.1")
-    implementation("com.clickhouse:clickhouse-jdbc:0.6.5")
+    implementation("com.clickhouse:clickhouse-jdbc:0.7.1")
+    implementation("com.clickhouse:clickhouse-http-client:0.7.1")
     implementation("org.lz4:lz4-java:1.8.0")
     implementation("com.github.seratch:kotliquery:1.9.0")
 
