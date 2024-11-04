@@ -18,7 +18,7 @@ dependencies {
     implementation("dev.inmo:tgbotapi:20.0.0")
     implementation("com.github.centralhardware:telegram-bot-commons:f950fa2e33")
 
-    implementation("dev.inmo:krontab:2.5.0")
+    implementation("dev.inmo:krontab:2.6.0")
 
     implementation("org.apache.httpcomponents.client5:httpclient5:5.4.1")
     implementation("com.clickhouse:clickhouse-jdbc:0.6.5")
