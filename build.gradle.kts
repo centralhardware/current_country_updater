@@ -18,7 +18,7 @@ val clickhouseVersion = "0.7.1"
 
 dependencies {
     implementation("dev.inmo:tgbotapi:20.0.0")
-    implementation("com.github.centralhardware:telegram-bot-commons:13ea3a0888")
+    implementation("com.github.centralhardware:telegram-bot-commons:7bbbd66a92")
 
     implementation("dev.inmo:krontab:2.6.0")
 
