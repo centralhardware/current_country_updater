@@ -1,5 +1,6 @@
 import com.clickhouse.jdbc.ClickHouseDataSource
 import com.neovisionaries.i18n.CountryCode
+import dev.inmo.krontab.doInfinity
 import dev.inmo.kslog.common.KSLog
 import dev.inmo.kslog.common.info
 import dev.inmo.micro_utils.common.Warning
@@ -18,11 +19,10 @@ import kotliquery.sessionOf
 import net.fellbaum.jemoji.EmojiManager
 
 @OptIn(Warning::class)
-@Suppress("BlockingMethodInNonBlockingContext")
 suspend fun main() {
     AppConfig.init("current_country_updater")
     val bot = longPolling {}.first
-    while (true) {
+    doInfinity("0 /10 * * *") {
         val channelCountry =
             extractCountryCode(
                 bot.getChat(System.getenv("CHANEL_ID").toLong().toChatId()).asChannelChat()!!.title
@@ -35,8 +35,7 @@ suspend fun main() {
         )
         if (channelCountry == currentCountry) {
             KSLog.info("don't need to update country.")
-            sleep(600000)
-            continue
+            return
         }
 
         bot.setChatTitle(
@@ -45,7 +44,6 @@ suspend fun main() {
         )
         Trace.save("setCountry", mapOf("old" to channelCountry, "new" to currentCountry))
         KSLog.info("Change country to $currentCountry")
-        sleep(600000)
     }
 }
 
