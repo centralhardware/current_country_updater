@@ -11,6 +11,8 @@ import dev.inmo.tgbotapi.extensions.api.chat.modify.setChatTitle
 import dev.inmo.tgbotapi.extensions.utils.asChannelChat
 import dev.inmo.tgbotapi.longPolling
 import dev.inmo.tgbotapi.types.toChatId
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import java.lang.Thread.sleep
 import java.sql.SQLException
 import javax.sql.DataSource
@@ -22,28 +24,32 @@ import net.fellbaum.jemoji.EmojiManager
 suspend fun main() {
     AppConfig.init("current_country_updater")
     val bot = longPolling {}.first
-    doInfinity("0 /10 * * *") {
-        val channelCountry =
-            extractCountryCode(
-                bot.getChat(System.getenv("CHANEL_ID").toLong().toChatId()).asChannelChat()!!.title
-            )
-        val currentCountry = getCurrentCountry()!!
-        KSLog.info("Current $currentCountry channel $channelCountry")
-        Trace.save(
-            "checkCountry",
-            mapOf("current" to currentCountry, "channelCountry" to channelCountry),
-        )
-        if (channelCountry == currentCountry) {
-            KSLog.info("don't need to update country.")
-            return
-        }
+    coroutineScope {
+        launch {
+            doInfinity("0 /10 * * *") {
+                val channelCountry =
+                    extractCountryCode(
+                        bot.getChat(System.getenv("CHANEL_ID").toLong().toChatId()).asChannelChat()!!.title
+                    )
+                val currentCountry = getCurrentCountry()!!
+                KSLog.info("Current $currentCountry channel $channelCountry")
+                Trace.save(
+                    "checkCountry",
+                    mapOf("current" to currentCountry, "channelCountry" to channelCountry),
+                )
+                if (channelCountry == currentCountry) {
+                    KSLog.info("don't need to update country.")
+                    return@doInfinity
+                }
 
-        bot.setChatTitle(
-            System.getenv("CHANEL_ID").toLong().toChatId(),
-            System.getenv("CHANEL_TITLE_PATTERN").format(countryCodeToEmoji(currentCountry)),
-        )
-        Trace.save("setCountry", mapOf("old" to channelCountry, "new" to currentCountry))
-        KSLog.info("Change country to $currentCountry")
+                bot.setChatTitle(
+                    System.getenv("CHANEL_ID").toLong().toChatId(),
+                    System.getenv("CHANEL_TITLE_PATTERN").format(countryCodeToEmoji(currentCountry)),
+                )
+                Trace.save("setCountry", mapOf("old" to channelCountry, "new" to currentCountry))
+                KSLog.info("Change country to $currentCountry")
+            }
+        }
     }
 }
 
