@@ -47,7 +47,7 @@ suspend fun main() {
     }
 }
 
-fun getCountryCode(country: String): String = CountryCode.findByName("(?i)" + country)[0].name
+fun getCountryCode(country: String): String = CountryCode.findByName("(?i)" + country.replace("&", "and"))[0].name
 
 fun extractCountryCode(title: String): String {
     val emoji = EmojiManager.extractEmojis(title).first()
