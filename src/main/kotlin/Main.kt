@@ -8,9 +8,16 @@ import dev.inmo.tgbotapi.AppConfig
 import dev.inmo.tgbotapi.Trace
 import dev.inmo.tgbotapi.extensions.api.chat.get.getChat
 import dev.inmo.tgbotapi.extensions.api.chat.modify.setChatTitle
+import dev.inmo.tgbotapi.extensions.api.edit.edit
+import dev.inmo.tgbotapi.extensions.api.edit.text.editMessageText
+import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onContentMessage
 import dev.inmo.tgbotapi.extensions.utils.asChannelChat
+import dev.inmo.tgbotapi.extensions.utils.asTextContent
+import dev.inmo.tgbotapi.extensions.utils.extensions.raw.from
+import dev.inmo.tgbotapi.extensions.utils.extensions.raw.text
 import dev.inmo.tgbotapi.longPolling
 import dev.inmo.tgbotapi.types.toChatId
+import dev.inmo.tgbotapi.utils.RiskFeature
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import java.lang.Thread.sleep
@@ -20,16 +27,26 @@ import kotliquery.queryOf
 import kotliquery.sessionOf
 import net.fellbaum.jemoji.EmojiManager
 
-@OptIn(Warning::class)
+@OptIn(Warning::class, RiskFeature::class)
 suspend fun main() {
     AppConfig.init("current_country_updater")
-    val bot = longPolling {}.first
+    val bot = longPolling {
+        onContentMessage {
+            if (it.chat.id.chatId.long != Config.CHANNEL_ID) return@onContentMessage
+
+            editMessageText(
+                chatId =  it.chat.id,
+                messageId =  it.messageId,
+                text = it.text!! + "\n\n#${getCurrentCountry()}",
+            )
+        }
+    }.first
     coroutineScope {
         launch {
             doInfinity("0 /10 * * *") {
                 val channelCountry =
                     extractCountryCode(
-                        bot.getChat(System.getenv("CHANEL_ID").toLong().toChatId()).asChannelChat()!!.title
+                        bot.getChat(Config.CHANNEL_ID.toChatId()).asChannelChat()!!.title
                     )
                 val currentCountry = getCurrentCountry()!!
                 KSLog.info("Current $currentCountry channel $channelCountry")
@@ -43,8 +60,8 @@ suspend fun main() {
                 }
 
                 bot.setChatTitle(
-                    System.getenv("CHANEL_ID").toLong().toChatId(),
-                    System.getenv("CHANEL_TITLE_PATTERN").format(countryCodeToEmoji(currentCountry)),
+                    Config.CHANNEL_ID.toChatId(),
+                    Config.CHANEL_TITLE_PATTERN.format(countryCodeToEmoji(currentCountry)),
                 )
                 Trace.save("setCountry", mapOf("old" to channelCountry, "new" to currentCountry))
                 KSLog.info("Change country to $currentCountry")
@@ -71,7 +88,7 @@ fun countryCodeToEmoji(country: String): String {
 
 val dataSource: DataSource =
     try {
-        ClickHouseDataSource(System.getenv("CLICKHOUSE_URL"))
+        ClickHouseDataSource(Config.CLICKHOUSE_URL)
     } catch (e: SQLException) {
         throw RuntimeException(e)
     }
