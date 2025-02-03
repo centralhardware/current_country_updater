@@ -28,7 +28,7 @@ dependencies {
 
     implementation("com.neovisionaries:nv-i18n:1.29")
 
-    implementation("net.fellbaum:jemoji:1.6.0")
+    implementation("net.fellbaum:jemoji:1.7.0")
 
 
 }
