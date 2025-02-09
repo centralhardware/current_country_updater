@@ -129,8 +129,9 @@ fun getCoordinates() =
         .run(
             queryOf(
                 """
-                   SELECT latitude, longitude
+                    SELECT latitude, longitude
                     FROM country_days_tracker_bot.country_days_tracker
+                    ORDER BY date_time DESC
                 """
             ).map { Pair(it.string("latitude"), it.string("longitude")) }
                 .asSingle
