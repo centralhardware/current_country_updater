@@ -8,24 +8,30 @@ import dev.inmo.tgbotapi.AppConfig
 import dev.inmo.tgbotapi.Trace
 import dev.inmo.tgbotapi.extensions.api.chat.get.getChat
 import dev.inmo.tgbotapi.extensions.api.chat.modify.setChatTitle
-import dev.inmo.tgbotapi.extensions.api.edit.edit
+import dev.inmo.tgbotapi.extensions.api.edit.caption.editMessageCaption
 import dev.inmo.tgbotapi.extensions.api.edit.text.editMessageText
 import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onContentMessage
 import dev.inmo.tgbotapi.extensions.utils.asChannelChat
-import dev.inmo.tgbotapi.extensions.utils.asTextContent
-import dev.inmo.tgbotapi.extensions.utils.extensions.raw.from
+import dev.inmo.tgbotapi.extensions.utils.extensions.raw.caption
 import dev.inmo.tgbotapi.extensions.utils.extensions.raw.text
 import dev.inmo.tgbotapi.longPolling
+import dev.inmo.tgbotapi.types.message.content.MediaGroupContent
+import dev.inmo.tgbotapi.types.message.content.PhotoContent
 import dev.inmo.tgbotapi.types.toChatId
 import dev.inmo.tgbotapi.utils.RiskFeature
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
-import java.lang.Thread.sleep
-import java.sql.SQLException
-import javax.sql.DataSource
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import kotliquery.queryOf
 import kotliquery.sessionOf
 import net.fellbaum.jemoji.EmojiManager
+import java.sql.SQLException
+import javax.sql.DataSource
+import io.ktor.client.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import io.ktor.client.engine.cio.*
 
 @OptIn(Warning::class, RiskFeature::class)
 suspend fun main() {
@@ -34,11 +40,21 @@ suspend fun main() {
         onContentMessage {
             if (it.chat.id.chatId.long != Config.CHANNEL_ID) return@onContentMessage
 
-            editMessageText(
-                chatId =  it.chat.id,
-                messageId =  it.messageId,
-                text = it.text!! + "\n\n#${getCurrentCountry()}",
-            )
+            if (it.content is PhotoContent || it.content is MediaGroupContent<*>) {
+                val messageText = it.caption ?: ""
+                editMessageCaption(
+                    chatId = it.chat.id,
+                    messageId =  it.messageId,
+                    text = "$messageText\n\n#${getCurrentCountry()} #${getCityName()}",
+                )
+            } else {
+                val messageText = it.text ?: ""
+                editMessageText(
+                    chatId =  it.chat.id,
+                    messageId =  it.messageId,
+                    text = "$messageText\n\n#${getCurrentCountry()} #${getCityName()}",
+                )
+            }
         }
     }.first
     coroutineScope {
@@ -107,3 +123,40 @@ fun getCurrentCountry() =
                 .map { it.string("country") }
                 .asSingle
         )
+
+fun getCoordinates() =
+    sessionOf(dataSource)
+        .run(
+            queryOf(
+                """
+                   SELECT latitude, longitude
+                    FROM country_days_tracker_bot.country_days_tracker
+                """
+            ).map { Pair(it.string("latitude"), it.string("longitude")) }
+                .asSingle
+        )
+
+@Serializable
+data class NominatimResponse(val address: Address?)
+
+@Serializable
+data class Address(val city: String?)
+
+val json =  Json {ignoreUnknownKeys = true}
+val client = HttpClient(CIO)
+suspend fun getCityName(): String? {
+    val coordinates = getCoordinates()!!
+    return try {
+        val url = "https://nominatim.openstreetmap.org/reverse?format=json&lat=${coordinates.first}&lon=${coordinates.second}"
+        val response: String = client.get(url) {
+            header("User-Agent", "Mozilla/5.0")
+        }.bodyAsText()
+        val json = json.decodeFromString<NominatimResponse>(response)
+        json.address?.city
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
+    } finally {
+        client.close()
+    }
+}
