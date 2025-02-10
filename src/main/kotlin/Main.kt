@@ -144,20 +144,14 @@ data class NominatimResponse(val address: Address?)
 data class Address(val city: String?)
 
 val json =  Json {ignoreUnknownKeys = true}
-val client = HttpClient(CIO)
 suspend fun getCityName(): String? {
     val coordinates = getCoordinates()!!
-    return try {
+    return runCatching {
         val url = "https://nominatim.openstreetmap.org/reverse?format=json&lat=${coordinates.first}&lon=${coordinates.second}"
-        val response: String = client.get(url) {
+        val response: String = HttpClient(CIO).get(url) {
             header("User-Agent", "Mozilla/5.0")
         }.bodyAsText()
         val json = json.decodeFromString<NominatimResponse>(response)
         json.address?.city
-    } catch (e: Exception) {
-        e.printStackTrace()
-        null
-    } finally {
-        client.close()
-    }
+    }.onFailure { it.printStackTrace() }.getOrDefault("")
 }
