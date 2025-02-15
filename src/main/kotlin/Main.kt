@@ -17,6 +17,7 @@ import dev.inmo.tgbotapi.extensions.utils.extensions.raw.text
 import dev.inmo.tgbotapi.longPolling
 import dev.inmo.tgbotapi.types.message.content.MediaGroupContent
 import dev.inmo.tgbotapi.types.message.content.PhotoContent
+import dev.inmo.tgbotapi.types.message.content.VideoContent
 import dev.inmo.tgbotapi.types.toChatId
 import dev.inmo.tgbotapi.utils.RiskFeature
 import kotlinx.coroutines.coroutineScope
@@ -40,7 +41,7 @@ suspend fun main() {
         onContentMessage {
             if (it.chat.id.chatId.long != Config.CHANNEL_ID) return@onContentMessage
 
-            if (it.content is PhotoContent || it.content is MediaGroupContent<*>) {
+            if (it.content is PhotoContent || it.content is MediaGroupContent<*> || it.content is VideoContent) {
                 val messageText = it.caption ?: ""
                 editMessageCaption(
                     chatId = it.chat.id,
