@@ -46,14 +46,14 @@ suspend fun main() {
                 editMessageCaption(
                     chatId = it.chat.id,
                     messageId =  it.messageId,
-                    text = "$messageText\n\n#${getCurrentCountry()} #${getCityName()}",
+                    text = "$messageText\n\n#${getCurrentCountry()} ${getCityName()}",
                 )
             } else {
                 val messageText = it.text ?: ""
                 editMessageText(
                     chatId =  it.chat.id,
                     messageId =  it.messageId,
-                    text = "$messageText\n\n#${getCurrentCountry()} #${getCityName()}",
+                    text = "$messageText\n\n#${getCurrentCountry()} ${getCityName()}",
                 )
             }
         }
@@ -142,7 +142,10 @@ fun getCoordinates() =
 data class NominatimResponse(val address: Address?)
 
 @Serializable
-data class Address(val city: String?)
+data class Address(
+    var city: String?,
+    val state: String?
+)
 
 val json =  Json {ignoreUnknownKeys = true}
 suspend fun getCityName(): String? {
@@ -153,6 +156,6 @@ suspend fun getCityName(): String? {
             header("User-Agent", "Mozilla/5.0")
         }.bodyAsText()
         val json = json.decodeFromString<NominatimResponse>(response)
-        json.address?.city
+        "#" + (json.address?.city ?: json.address?.state)
     }.onFailure { it.printStackTrace() }.getOrDefault("")
 }
