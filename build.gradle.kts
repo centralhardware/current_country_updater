@@ -20,7 +20,7 @@ dependencies {
     implementation("dev.inmo:tgbotapi:23.1.2")
     implementation("com.github.centralhardware:ktgbotapi-commons:f0db12f60b")
 
-    implementation("dev.inmo:krontab:2.7.1")
+    implementation("dev.inmo:krontab:2.7.2")
 
     implementation("com.clickhouse:clickhouse-jdbc:$clickhouseVersion")
     implementation("com.clickhouse:clickhouse-http-client:$clickhouseVersion")
