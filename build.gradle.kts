@@ -14,7 +14,7 @@ repositories {
     maven("https://jitpack.io")
 }
 
-val clickhouseVersion = "0.8.0"
+val clickhouseVersion = "0.8.1"
 
 dependencies {
     implementation("dev.inmo:tgbotapi:23.1.2")
