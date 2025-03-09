@@ -156,6 +156,6 @@ suspend fun getCityName(): String? {
             header("User-Agent", "Mozilla/5.0")
         }.bodyAsText()
         val json = json.decodeFromString<NominatimResponse>(response)
-        "#" + (json.address?.city ?: json.address?.state)
+        "#" + (json.address?.city ?: json.address?.state)?.replace(" ", "_")
     }.onFailure { it.printStackTrace() }.getOrDefault("")
 }
