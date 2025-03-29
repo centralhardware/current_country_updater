@@ -31,7 +31,7 @@ dependencies {
 
     implementation("net.fellbaum:jemoji:1.7.1")
 
-    implementation("io.ktor:ktor-client-core:3.1.1")
+    implementation("io.ktor:ktor-client-core:3.1.2")
     implementation("io.ktor:ktor-client-cio:3.1.1")
     implementation("io.ktor:ktor-client-content-negotiation:3.1.1")
     implementation("io.ktor:ktor-serialization-kotlinx-json:3.1.1")
