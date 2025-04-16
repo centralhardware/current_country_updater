@@ -1,9 +1,7 @@
-import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
-
 plugins {
     kotlin("jvm") version "2.1.20"
-    id("com.github.johnrengelman.shadow") version "8.1.1"
     kotlin("plugin.serialization") version "2.1.20"
+    application
 }
 
 group = "me.centralhardware.telegram"
@@ -43,12 +41,6 @@ tasks.test {
     useJUnitPlatform()
 }
 
-tasks {
-    named<ShadowJar>("shadowJar") {
-        archiveBaseName.set("shadow")
-        mergeServiceFiles()
-        manifest {
-            attributes(mapOf("Main-Class" to "MainKt"))
-        }
-    }
+application {
+    mainClass.set("MainKt")
 }
