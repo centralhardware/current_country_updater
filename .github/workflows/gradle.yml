@@ -18,4 +18,4 @@ jobs:
         distribution: 'temurin'
         cache: gradle
     - name: build
-      run: gradle shadowJar
+      run: gradle installDist
