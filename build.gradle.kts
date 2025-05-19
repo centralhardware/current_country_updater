@@ -12,7 +12,7 @@ repositories {
     maven("https://jitpack.io")
 }
 
-val clickhouseVersion = "0.8.5"
+val clickhouseVersion = "0.8.6"
 
 dependencies {
     implementation("dev.inmo:tgbotapi:24.0.2")
