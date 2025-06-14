@@ -12,6 +12,8 @@ repositories {
     maven("https://jitpack.io")
 }
 
+val ktorVersion = "3.2.0"
+
 dependencies {
     implementation("dev.inmo:tgbotapi:25.0.1")
     implementation("com.github.centralhardware:ktgbotapi-commons:6ef1dde4fe")
@@ -26,10 +28,10 @@ dependencies {
 
     implementation("net.fellbaum:jemoji:1.7.4")
 
-    implementation("io.ktor:ktor-client-core:3.2.0")
-    implementation("io.ktor:ktor-client-cio:3.1.3")
-    implementation("io.ktor:ktor-client-content-negotiation:3.2.0")
-    implementation("io.ktor:ktor-serialization-kotlinx-json:3.2.0")
+    implementation("io.ktor:ktor-client-core:$ktorVersion")
+    implementation("io.ktor:ktor-client-cio:$ktorVersion")
+    implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
 
 }
