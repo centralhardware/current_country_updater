@@ -12,16 +12,13 @@ repositories {
     maven("https://jitpack.io")
 }
 
-val clickhouseVersion = "0.8.6"
-
 dependencies {
     implementation("dev.inmo:tgbotapi:25.0.1")
     implementation("com.github.centralhardware:ktgbotapi-commons:6ef1dde4fe")
 
     implementation("dev.inmo:krontab:2.7.2")
 
-    implementation("com.clickhouse:clickhouse-jdbc:$clickhouseVersion")
-    implementation("com.clickhouse:clickhouse-http-client:$clickhouseVersion")
+    implementation("com.clickhouse:clickhouse-jdbc:0.9.0")
     implementation("org.lz4:lz4-java:1.8.0")
     implementation("com.github.seratch:kotliquery:1.9.1")
 
