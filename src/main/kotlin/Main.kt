@@ -12,8 +12,6 @@ import dev.inmo.tgbotapi.extensions.api.edit.caption.editMessageCaption
 import dev.inmo.tgbotapi.extensions.api.edit.text.editMessageText
 import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onContentMessage
 import dev.inmo.tgbotapi.extensions.utils.asChannelChat
-import dev.inmo.tgbotapi.abstracts.TextedWithTextSources
-import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onCommand
 import dev.inmo.tgbotapi.extensions.utils.extensions.raw.caption_entities
 import dev.inmo.tgbotapi.extensions.utils.extensions.raw.entities
 import dev.inmo.tgbotapi.longPolling
