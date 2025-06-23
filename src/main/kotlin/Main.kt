@@ -12,7 +12,8 @@ import dev.inmo.tgbotapi.extensions.api.edit.caption.editMessageCaption
 import dev.inmo.tgbotapi.extensions.api.edit.text.editMessageText
 import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onContentMessage
 import dev.inmo.tgbotapi.extensions.utils.asChannelChat
-import dev.inmo.tgbotapi.abstracts.TextedWithTextSources
+import dev.inmo.tgbotapi.extensions.utils.extensions.raw.caption_entities
+import dev.inmo.tgbotapi.extensions.utils.extensions.raw.entities
 import dev.inmo.tgbotapi.longPolling
 import dev.inmo.tgbotapi.types.message.content.MediaGroupContent
 import dev.inmo.tgbotapi.types.message.content.PhotoContent
@@ -43,18 +44,18 @@ suspend fun main() {
             if (it.chat.id.chatId.long != Config.CHANNEL_ID) return@onContentMessage
 
             if (it.content is PhotoContent || it.content is MediaGroupContent<*> || it.content is VideoContent) {
-                val msgSources = (it.content as? TextedWithTextSources)?.textSources ?: emptyList()
+                val msgEntities = it.entities?: emptyList()
                 editMessageCaption(
                     chatId = it.chat.id,
-                    messageId = it.messageId,
-                    entities = msgSources + buildEntities { "\n\n#${getCurrentCountry()} ${getCityName()}" }
+                    messageId =  it.messageId,
+                    entities = msgEntities + buildEntities { "\n\n#${getCurrentCountry()} ${getCityName()}" }
                 )
             } else {
-                val msgSources = (it.content as? TextedWithTextSources)?.textSources ?: emptyList()
+                val msgEntities = it.caption_entities?: emptyList()
                 editMessageText(
-                    chatId = it.chat.id,
-                    messageId = it.messageId,
-                    entities = msgSources + buildEntities { "\n\n#${getCurrentCountry()} ${getCityName()}" }
+                    chatId =  it.chat.id,
+                    messageId =  it.messageId,
+                    entities = msgEntities + buildEntities { "\n\n#${getCurrentCountry()} ${getCityName()}" }
                 )
             }
         }
