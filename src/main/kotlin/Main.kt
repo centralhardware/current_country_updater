@@ -12,7 +12,7 @@ import dev.inmo.tgbotapi.extensions.api.edit.caption.editMessageCaption
 import dev.inmo.tgbotapi.extensions.api.edit.text.editMessageText
 import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onContentMessage
 import dev.inmo.tgbotapi.extensions.utils.asChannelChat
-import dev.inmo.tgbotapi.extensions.utils.extensions.raw.caption
+import dev.inmo.tgbotapi.extensions.utils.extensions.raw.entities
 import dev.inmo.tgbotapi.extensions.utils.extensions.raw.text
 import dev.inmo.tgbotapi.longPolling
 import dev.inmo.tgbotapi.types.message.content.MediaGroupContent
@@ -20,6 +20,11 @@ import dev.inmo.tgbotapi.types.message.content.PhotoContent
 import dev.inmo.tgbotapi.types.message.content.VideoContent
 import dev.inmo.tgbotapi.types.toChatId
 import dev.inmo.tgbotapi.utils.RiskFeature
+import dev.inmo.tgbotapi.utils.buildEntities
+import io.ktor.client.*
+import io.ktor.client.engine.cio.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -29,10 +34,6 @@ import kotliquery.sessionOf
 import net.fellbaum.jemoji.EmojiManager
 import java.sql.SQLException
 import javax.sql.DataSource
-import io.ktor.client.*
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
-import io.ktor.client.engine.cio.*
 
 @OptIn(Warning::class, RiskFeature::class)
 suspend fun main() {
@@ -41,19 +42,19 @@ suspend fun main() {
         onContentMessage {
             if (it.chat.id.chatId.long != Config.CHANNEL_ID) return@onContentMessage
 
+            val msgEntities = it.entities?: emptyList()
             if (it.content is PhotoContent || it.content is MediaGroupContent<*> || it.content is VideoContent) {
-                val messageText = it.caption ?: ""
                 editMessageCaption(
                     chatId = it.chat.id,
                     messageId =  it.messageId,
-                    text = "$messageText\n\n#${getCurrentCountry()} ${getCityName()}",
+                    entities = msgEntities + buildEntities { "\n\n#${getCurrentCountry()} ${getCityName()}" }
                 )
             } else {
                 val messageText = it.text ?: ""
                 editMessageText(
                     chatId =  it.chat.id,
                     messageId =  it.messageId,
-                    text = "$messageText\n\n#${getCurrentCountry()} ${getCityName()}",
+                    entities = msgEntities + buildEntities { "\n\n#${getCurrentCountry()} ${getCityName()}" }
                 )
             }
         }
