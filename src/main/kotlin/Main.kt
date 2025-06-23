@@ -50,7 +50,6 @@ suspend fun main() {
                     entities = msgEntities + buildEntities { "\n\n#${getCurrentCountry()} ${getCityName()}" }
                 )
             } else {
-                val messageText = it.text ?: ""
                 editMessageText(
                     chatId =  it.chat.id,
                     messageId =  it.messageId,
