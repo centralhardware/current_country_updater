@@ -1,4 +1,4 @@
-import com.clickhouse.jdbc.ClickHouseDataSource
+import com.clickhouse.jdbc.DataSourceImpl
 import com.neovisionaries.i18n.CountryCode
 import dev.inmo.krontab.doInfinity
 import dev.inmo.kslog.common.KSLog
@@ -12,8 +12,8 @@ import dev.inmo.tgbotapi.extensions.api.edit.caption.editMessageCaption
 import dev.inmo.tgbotapi.extensions.api.edit.text.editMessageText
 import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onContentMessage
 import dev.inmo.tgbotapi.extensions.utils.asChannelChat
+import dev.inmo.tgbotapi.extensions.utils.extensions.raw.caption_entities
 import dev.inmo.tgbotapi.extensions.utils.extensions.raw.entities
-import dev.inmo.tgbotapi.extensions.utils.extensions.raw.text
 import dev.inmo.tgbotapi.longPolling
 import dev.inmo.tgbotapi.types.message.content.MediaGroupContent
 import dev.inmo.tgbotapi.types.message.content.PhotoContent
@@ -33,6 +33,7 @@ import kotliquery.queryOf
 import kotliquery.sessionOf
 import net.fellbaum.jemoji.EmojiManager
 import java.sql.SQLException
+import java.util.*
 import javax.sql.DataSource
 
 @OptIn(Warning::class, RiskFeature::class)
@@ -42,14 +43,15 @@ suspend fun main() {
         onContentMessage {
             if (it.chat.id.chatId.long != Config.CHANNEL_ID) return@onContentMessage
 
-            val msgEntities = it.entities?: emptyList()
             if (it.content is PhotoContent || it.content is MediaGroupContent<*> || it.content is VideoContent) {
+                val msgEntities = it.entities?: emptyList()
                 editMessageCaption(
                     chatId = it.chat.id,
                     messageId =  it.messageId,
                     entities = msgEntities + buildEntities { "\n\n#${getCurrentCountry()} ${getCityName()}" }
                 )
             } else {
+                val msgEntities = it.caption_entities?: emptyList()
                 editMessageText(
                     chatId =  it.chat.id,
                     messageId =  it.messageId,
@@ -105,7 +107,7 @@ fun countryCodeToEmoji(country: String): String {
 
 val dataSource: DataSource =
     try {
-        ClickHouseDataSource(Config.CLICKHOUSE_URL)
+        DataSourceImpl(Config.CLICKHOUSE_URL, Properties())
     } catch (e: SQLException) {
         throw RuntimeException(e)
     }
