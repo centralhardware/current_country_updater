@@ -16,7 +16,7 @@ val ktorVersion = "3.2.0"
 
 dependencies {
     implementation("dev.inmo:tgbotapi:26.0.0")
-    implementation("com.github.centralhardware:ktgbotapi-commons:6ef1dde4fe")
+    implementation("com.github.centralhardware:ktgbotapi-commons:ef9a97ef58")
 
     implementation("dev.inmo:krontab:2.7.2")
 
