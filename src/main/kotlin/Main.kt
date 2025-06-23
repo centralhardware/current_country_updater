@@ -20,6 +20,7 @@ import dev.inmo.tgbotapi.types.message.content.VideoContent
 import dev.inmo.tgbotapi.types.toChatId
 import dev.inmo.tgbotapi.utils.RiskFeature
 import dev.inmo.tgbotapi.utils.buildEntities
+import dev.inmo.tgbotapi.utils.regular
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.request.*
@@ -47,14 +48,14 @@ suspend fun main() {
                 editMessageCaption(
                     chatId = it.chat.id,
                     messageId = it.messageId,
-                    entities = msgSources + buildEntities { "\n\n#${getCurrentCountry()} ${getCityName()}" }
+                    entities = msgSources + buildEntities { regular("\n\n#${getCurrentCountry()} ${getCityName()}") }
                 )
             } else {
                 val msgSources = (it.content as? TextedWithTextSources)?.textSources ?: emptyList()
                 editMessageText(
                     chatId = it.chat.id,
                     messageId = it.messageId,
-                    entities = msgSources + buildEntities { "\n\n#${getCurrentCountry()} ${getCityName()}" }
+                    entities = msgSources + buildEntities { regular("\n\n#${getCurrentCountry()} ${getCityName()}") }
                 )
             }
         }
