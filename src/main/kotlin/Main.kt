@@ -5,7 +5,6 @@ import dev.inmo.kslog.common.KSLog
 import dev.inmo.kslog.common.info
 import dev.inmo.micro_utils.common.Warning
 import dev.inmo.tgbotapi.AppConfig
-import dev.inmo.tgbotapi.Trace
 import dev.inmo.tgbotapi.extensions.api.chat.get.getChat
 import dev.inmo.tgbotapi.extensions.api.chat.modify.setChatTitle
 import dev.inmo.tgbotapi.extensions.api.edit.caption.editMessageCaption
@@ -70,10 +69,6 @@ suspend fun main() {
                     )
                 val currentCountry = getCurrentCountry()!!
                 KSLog.info("Current $currentCountry channel $channelCountry")
-                Trace.save(
-                    "checkCountry",
-                    mapOf("current" to currentCountry, "channelCountry" to channelCountry),
-                )
                 if (channelCountry == currentCountry) {
                     KSLog.info("don't need to update country.")
                     return@doInfinity
@@ -83,7 +78,6 @@ suspend fun main() {
                     Config.CHANNEL_ID.toChatId(),
                     Config.CHANEL_TITLE_PATTERN.format(countryCodeToEmoji(currentCountry)),
                 )
-                Trace.save("setCountry", mapOf("old" to channelCountry, "new" to currentCountry))
                 KSLog.info("Change country to $currentCountry")
             }
         }
