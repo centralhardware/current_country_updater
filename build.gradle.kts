@@ -17,7 +17,7 @@ val ktorVersion = "3.2.3"
 
 dependencies {
     implementation("dev.inmo:tgbotapi:$ktgbotapiVersion")
-    implementation("com.github.centralhardware:ktgbotapi-commons:$ktgbotapiVersion-1")
+    implementation("com.github.centralhardware:ktgbotapi-commons:$ktgbotapiVersion")
 
     implementation("com.clickhouse:clickhouse-jdbc:0.9.1")
     implementation("org.lz4:lz4-java:1.8.0")
