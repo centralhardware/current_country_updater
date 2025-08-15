@@ -11,7 +11,7 @@ A Telegram bot that automatically updates a channel's title and adds location ta
 
 ## Requirements
 
-- JDK 22 or higher
+- JDK 24 or higher
 - Gradle 8.0 or higher
 - ClickHouse database with country tracking data
 - Telegram Bot API token
