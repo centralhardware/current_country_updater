@@ -1,7 +1,6 @@
 plugins {
     kotlin("jvm") version "2.2.10"
     kotlin("plugin.serialization") version "2.2.10"
-    application
     id("com.google.cloud.tools.jib") version "3.4.5"
 }
 
@@ -49,7 +48,6 @@ jib {
         jvmFlags = listOf("-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=75.0")
         creationTime = "USE_CURRENT_TIMESTAMP"
         labels = mapOf(
-            "org.opencontainers.image.title" to "airportweatherbot",
             "org.opencontainers.image.source" to (System.getenv("GITHUB_SERVER_URL")?.let { server ->
                 val repo = System.getenv("GITHUB_REPOSITORY")
                 if (repo != null) "$server/$repo" else ""
