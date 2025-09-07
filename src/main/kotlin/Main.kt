@@ -84,7 +84,17 @@ suspend fun main() {
     }
 }
 
-fun getCountryCode(country: String): String = CountryCode.findByName("(?i)" + country.replace("&", "and").replace("vietnam", "Viet Nam"))[0].name
+fun getCountryCode(country: String): String {
+    val search = "(?i)" + country
+        .replace("&", "and")
+        .replace("vietnam", "Viet Nam")
+
+    return CountryCode.findByName(search)
+        .firstOrNull()
+        ?.name
+        // Use first two letters as a sensible default when the lookup fails
+        ?: country.take(2).padEnd(2, 'X')
+}
 
 fun extractCountryCode(title: String): String {
     val emoji = EmojiManager.extractEmojis(title).first()
@@ -92,7 +102,7 @@ fun extractCountryCode(title: String): String {
 }
 
 fun countryCodeToEmoji(country: String): String {
-    val upperCaseCountryCode = getCountryCode(country).uppercase()
+    val upperCaseCountryCode = getCountryCode(country).uppercase().take(2).padEnd(2, 'X')
 
     val firstChar = upperCaseCountryCode[0] - 'A' + 0x1F1E6
     val secondChar = upperCaseCountryCode[1] - 'A' + 0x1F1E6
