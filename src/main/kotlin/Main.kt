@@ -48,14 +48,14 @@ suspend fun main() {
                 editMessageCaption(
                     chatId = it.chat.id,
                     messageId = it.messageId,
-                    entities = msgSources + buildEntities { regular("\n\n#${getCurrentCountry()} ${getCityName()}") }
+                    entities = msgSources + buildEntities { regular("\n\n#${getCurrentCountry()?.replace(" ", "_")} ${getCityName()}") }
                 )
             } else {
                 val msgSources = it.entities ?: emptyList()
                 editMessageText(
                     chatId = it.chat.id,
                     messageId = it.messageId,
-                    entities = msgSources + buildEntities { regular("\n\n#${getCurrentCountry()} ${getCityName()}") }
+                    entities = msgSources + buildEntities { regular("\n\n#${getCurrentCountry()?.replace(" ", "_")} ${getCityName()}") }
                 )
             }
         }
