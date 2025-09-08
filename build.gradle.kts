@@ -19,7 +19,7 @@ dependencies {
     implementation("dev.inmo:tgbotapi:$ktgbotapiVersion")
     implementation("com.github.centralhardware:ktgbotapi-commons:$ktgbotapiVersion")
 
-    implementation("com.clickhouse:clickhouse-jdbc:0.9.1")
+    implementation("com.clickhouse:clickhouse-jdbc:0.9.2")
     implementation("org.lz4:lz4-java:1.8.0")
     implementation("com.github.seratch:kotliquery:1.9.1")
 
