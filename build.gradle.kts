@@ -35,6 +35,9 @@ dependencies {
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
 
+    testImplementation(kotlin("test"))
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.11.3")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.11.3")
 }
 
 jib {
