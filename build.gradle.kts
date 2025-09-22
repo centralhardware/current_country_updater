@@ -27,7 +27,7 @@ dependencies {
 
     implementation("com.neovisionaries:nv-i18n:1.29")
 
-    implementation("net.fellbaum:jemoji:1.7.4")
+    implementation("net.fellbaum:jemoji:1.7.5")
 
     implementation("io.ktor:ktor-client-core:$ktorVersion")
     implementation("io.ktor:ktor-client-cio:$ktorVersion")
