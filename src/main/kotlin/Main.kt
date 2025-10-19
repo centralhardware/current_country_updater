@@ -10,7 +10,6 @@ import dev.inmo.tgbotapi.extensions.api.bot.setMyCommands
 import dev.inmo.tgbotapi.longPolling
 import dev.inmo.tgbotapi.types.BotCommand
 import dev.inmo.tgbotapi.utils.RiskFeature
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
 @OptIn(Warning::class, RiskFeature::class)
@@ -45,6 +44,6 @@ suspend fun main() {
         registerStatCommand()
         registerCityStatCommand()
         registerSubscribeCommand()
-    }
+    }.second.join()
 
 }
