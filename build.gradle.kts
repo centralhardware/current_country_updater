@@ -14,12 +14,15 @@ repositories {
 
 val ktgbotapiVersion = "29.0.0"
 val ktorVersion = "3.3.1"
+val clickhouseVersion = "0.9.2"
 
 dependencies {
     implementation("dev.inmo:tgbotapi:$ktgbotapiVersion")
     implementation("com.github.centralhardware:ktgbotapi-commons:$ktgbotapiVersion")
+    implementation("com.github.centralhardware.ktgbotapi-middlewars:ktgbotapi-restrict-access-middleware:$ktgbotapiVersion")
 
-    implementation("com.clickhouse:clickhouse-jdbc:0.9.2")
+    implementation("com.clickhouse:clickhouse-jdbc:$clickhouseVersion")
+    implementation("com.clickhouse:clickhouse-http-client:$clickhouseVersion")
     implementation("org.lz4:lz4-java:1.8.0")
     implementation("com.github.seratch:kotliquery:1.9.1")
 
@@ -27,17 +30,25 @@ dependencies {
 
     implementation("com.neovisionaries:nv-i18n:1.29")
 
-    implementation("net.fellbaum:jemoji:1.7.5")
+    implementation("net.fellbaum:jemoji:1.7.4")
 
     implementation("io.ktor:ktor-client-core:$ktorVersion")
     implementation("io.ktor:ktor-client-cio:$ktorVersion")
     implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
+
+    implementation("io.ktor:ktor-server-netty:$ktorVersion")
+    implementation("io.ktor:ktor-server-core:$ktorVersion")
+    implementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
+
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
 
+    implementation("org.flywaydb:flyway-core:11.13.2")
+    implementation("org.flywaydb:flyway-database-clickhouse:10.24.0")
+
     testImplementation(kotlin("test"))
-    testImplementation("org.junit.jupiter:junit-jupiter-api:6.0.0")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:6.0.0")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.11.3")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.11.3")
 }
 
 jib {
@@ -65,3 +76,4 @@ jib {
 tasks.test {
     useJUnitPlatform()
 }
+

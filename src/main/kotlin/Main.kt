@@ -1,143 +1,50 @@
-import com.clickhouse.jdbc.DataSourceImpl
-import com.neovisionaries.i18n.CountryCode
+import ChannelManager.registerHashtagHandler
+import ChannelManager.updateChannelTitle
+import commands.registerCityStatCommand
+import commands.registerStatCommand
+import commands.registerSubscribeCommand
 import dev.inmo.krontab.doInfinity
-import dev.inmo.kslog.common.KSLog
-import dev.inmo.kslog.common.info
 import dev.inmo.micro_utils.common.Warning
 import dev.inmo.tgbotapi.AppConfig
-import dev.inmo.tgbotapi.extensions.api.chat.get.getChat
-import dev.inmo.tgbotapi.extensions.api.chat.modify.setChatTitle
-import dev.inmo.tgbotapi.extensions.api.edit.caption.editMessageCaption
-import dev.inmo.tgbotapi.extensions.api.edit.text.editMessageText
-import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onContentMessage
-import dev.inmo.tgbotapi.extensions.utils.asChannelChat
-import dev.inmo.tgbotapi.extensions.utils.extensions.raw.caption_entities
-import dev.inmo.tgbotapi.extensions.utils.extensions.raw.entities
+import dev.inmo.tgbotapi.extensions.api.bot.setMyCommands
 import dev.inmo.tgbotapi.longPolling
-import dev.inmo.tgbotapi.types.message.content.MediaGroupContent
-import dev.inmo.tgbotapi.types.message.content.PhotoContent
-import dev.inmo.tgbotapi.types.message.content.VideoContent
-import dev.inmo.tgbotapi.types.toChatId
+import dev.inmo.tgbotapi.types.BotCommand
 import dev.inmo.tgbotapi.utils.RiskFeature
-import dev.inmo.tgbotapi.utils.buildEntities
-import dev.inmo.tgbotapi.utils.regular
-import io.ktor.client.*
-import io.ktor.client.engine.cio.*
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-import kotliquery.queryOf
-import kotliquery.sessionOf
-import net.fellbaum.jemoji.EmojiManager
-import java.sql.SQLException
-import java.util.*
-import javax.sql.DataSource
 
 @OptIn(Warning::class, RiskFeature::class)
 suspend fun main() {
     AppConfig.init("current_country_updater")
-    val bot = longPolling {
-        onContentMessage {
-            if (it.chat.id.chatId.long != Config.CHANNEL_ID) return@onContentMessage
+    WebService.start(80)
 
-            if (it.content is PhotoContent || it.content is MediaGroupContent<*> || it.content is VideoContent) {
-                val msgSources = it.caption_entities ?: emptyList()
-                editMessageCaption(
-                    chatId = it.chat.id,
-                    messageId = it.messageId,
-                    entities = msgSources + buildEntities { regular("\n\n#${getCurrentCountry()?.replace(" ", "_")} ${getCityName()}") }
-                )
-            } else {
-                val msgSources = it.entities ?: emptyList()
-                editMessageText(
-                    chatId = it.chat.id,
-                    messageId = it.messageId,
-                    entities = msgSources + buildEntities { regular("\n\n#${getCurrentCountry()?.replace(" ", "_")} ${getCityName()}") }
-                )
-            }
-        }
-    }.first
-    coroutineScope {
+    longPolling({ restrictAccess(EnvironmentVariableUserAccessChecker()) }) {
         launch {
-            doInfinity("0 /10 * * *") {
-                val channelCountry =
-                    extractCountryCode(
-                        bot.getChat(Config.CHANNEL_ID.toChatId()).asChannelChat()!!.title
-                    )
-                val currentCountry = getCurrentCountry()!!
-                KSLog.info("Current: $currentCountry. Channel: $channelCountry")
-                if (channelCountry == currentCountry) {
-                    KSLog.info("don't need to update country.")
-                    return@doInfinity
+            WebService.locationUpdates.collect { update ->
+                LocationSubscriptionManager.cleanupExpiredSubscriptions()
+                with(LocationSubscriptionManager) {
+                    updateAllSubscribers(update.latitude, update.longitude)
                 }
-
-                bot.setChatTitle(
-                    Config.CHANNEL_ID.toChatId(),
-                    Config.CHANEL_TITLE_PATTERN.format(countryCodeToEmoji(currentCountry)),
-                )
-                KSLog.info("Change country to $currentCountry")
             }
         }
-    }
-}
 
+        launch {
+            doInfinity(Config.CHANNEL_UPDATE_CRON) {
+                updateChannelTitle(Config.CHANNEL_ID, Config.CHANEL_TITLE_PATTERN)
+            }
+        }
 
-val dataSource: DataSource =
-    try {
-        DataSourceImpl(Config.CLICKHOUSE_URL, Properties())
-    } catch (e: SQLException) {
-        throw RuntimeException(e)
-    }
-
-fun getCurrentCountry() =
-    sessionOf(dataSource)
-        .run(
-            queryOf(
-                    """
-            SELECT lower(country) as country
-            FROM  country_days_tracker_bot.country_days_tracker
-            ORDER BY date_time DESC
-            LIMIT 1
-         """
-                )
-                .map { it.string("country") }
-                .asSingle
+        // Set bot commands
+        setMyCommands(
+            BotCommand("stat", "show statistics"),
+            BotCommand("citystat", "show city statistics"),
+            BotCommand("subscribe", "subscribe to location updates")
         )
 
-fun getCoordinates() =
-    sessionOf(dataSource)
-        .run(
-            queryOf(
-                """
-                    SELECT latitude, longitude
-                    FROM country_days_tracker_bot.country_days_tracker
-                    ORDER BY date_time DESC
-                """
-            ).map { Pair(it.string("latitude"), it.string("longitude")) }
-                .asSingle
-        )
+        registerHashtagHandler(Config.CHANNEL_ID)
+        registerStatCommand()
+        registerCityStatCommand()
+        registerSubscribeCommand()
+    }
 
-@Serializable
-data class NominatimResponse(val address: Address?)
-
-@Serializable
-data class Address(
-    var city: String?,
-    val state: String?
-)
-
-val json =  Json {ignoreUnknownKeys = true}
-suspend fun getCityName(): String? {
-    val coordinates = getCoordinates()!!
-    return runCatching {
-        val url = "https://nominatim.openstreetmap.org/reverse?format=json&lat=${coordinates.first}&lon=${coordinates.second}"
-        val response: String = HttpClient(CIO).get(url) {
-            header("User-Agent", "Mozilla/5.0")
-        }.bodyAsText()
-        val json = json.decodeFromString<NominatimResponse>(response)
-        "#" + (json.address?.city ?: json.address?.state)?.replace(" ", "_")
-    }.onFailure { it.printStackTrace() }.getOrDefault("")
 }

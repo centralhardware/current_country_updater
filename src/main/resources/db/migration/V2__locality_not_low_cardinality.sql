@@ -1,0 +1,2 @@
+ALTER TABLE country_days_tracker_bot.country_days_tracker
+MODIFY COLUMN locality String;
