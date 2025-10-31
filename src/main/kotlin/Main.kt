@@ -1,6 +1,5 @@
 import ChannelManager.registerHashtagHandler
 import ChannelManager.updateChannelTitle
-import commands.registerCityStatCommand
 import commands.registerStatCommand
 import commands.registerSubscribeCommand
 import dev.inmo.krontab.doInfinity
@@ -36,13 +35,11 @@ suspend fun main() {
         // Set bot commands
         setMyCommands(
             BotCommand("stat", "show statistics"),
-            BotCommand("citystat", "show city statistics"),
             BotCommand("subscribe", "subscribe to location updates")
         )
 
         registerHashtagHandler(Config.CHANNEL_ID)
         registerStatCommand()
-        registerCityStatCommand()
         registerSubscribeCommand()
     }.second.join()
 

@@ -11,10 +11,6 @@ object StatsFormatter {
         }
     }
 
-    fun formatCityStats(stats: List<Pair<String, Int>>): String {
-        return formatStatsList(stats)
-    }
-
     private fun formatStatsList(stats: List<Pair<String, Int>>): String {
         val counter = AtomicInteger(1)
         return stats.joinToString("\n") { (name, days) ->
