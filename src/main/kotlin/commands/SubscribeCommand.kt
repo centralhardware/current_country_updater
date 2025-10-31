@@ -12,8 +12,8 @@ fun BehaviourContext.registerSubscribeCommand() {
         val chatId = message.chat.id
 
         val lastLocation = DatabaseService.getLastLocation()
-        val lat = lastLocation?.first?.toDouble() ?: 0.0
-        val lon = lastLocation?.second?.toDouble() ?: 0.0
+        val lat = lastLocation?.latitude?.toDouble() ?: 0.0
+        val lon = lastLocation?.longitude?.toDouble() ?: 0.0
 
         val locationMessage = sendLocation(
             chatId = chatId,

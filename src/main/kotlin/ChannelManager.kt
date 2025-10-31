@@ -77,13 +77,17 @@ object ChannelManager {
 
     private fun getCurrentCountry(): String? {
         val location = DatabaseService.getLastLocation()
-        return location?.third
+        return location?.country
     }
 
-    private suspend fun buildLocationHashtags(): String {
+    private fun buildLocationHashtags(): String {
         val location = DatabaseService.getLastLocation() ?: return ""
-        val country = location.third.replace(" ", "_")
-        val city = GeocodingService.getCityName(location.first, location.second) ?: ""
+        val country = location.country.replace(" ", "_")
+        val city = if (location.locality.isNotEmpty()) {
+            "#${location.locality.replace(" ", "_")}"
+        } else {
+            ""
+        }
         return "\n\n#$country $city"
     }
 }

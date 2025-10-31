@@ -133,18 +133,30 @@ object DatabaseService {
         )
     }
 
-    fun getLastLocation(): Triple<Float, Float, String>? {
+    data class Location(
+        val latitude: Float,
+        val longitude: Float,
+        val country: String,
+        val locality: String
+    )
+
+    fun getLastLocation(): Location? {
         return sessionOf(dataSource).run(
             queryOf(
                 // language=SQL
                 """
-                    SELECT latitude, longitude, country
+                    SELECT latitude, longitude, country, locality
                     FROM country_days_tracker_bot.country_days_tracker
                     ORDER BY date_time DESC
                     LIMIT 1
                 """.trimIndent()
             ).map { row ->
-                Triple(row.float("latitude"), row.float("longitude"), row.string("country"))
+                Location(
+                    row.float("latitude"),
+                    row.float("longitude"),
+                    row.string("country"),
+                    row.string("locality")
+                )
             }.asSingle
         )
     }
