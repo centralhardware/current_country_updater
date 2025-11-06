@@ -14,7 +14,7 @@ repositories {
 
 val ktgbotapiVersion = "29.0.0"
 val ktorVersion = "3.3.2"
-val clickhouseVersion = "0.9.2"
+val clickhouseVersion = "0.9.3"
 
 dependencies {
     implementation("dev.inmo:tgbotapi:$ktgbotapiVersion")
