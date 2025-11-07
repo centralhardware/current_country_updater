@@ -71,6 +71,14 @@ object WebService {
 
             KSLog.info("Processing location update: $body")
 
+            // Validate altitude: if it's above 12000 meters (unreasonable), set it to 0
+            val validatedAlt = if (body.alt > 12000) {
+                KSLog.info("Altitude ${body.alt} exceeds 12000 meters, setting to 0")
+                0
+            } else {
+                body.alt
+            }
+
             DatabaseService.save(
                     Instant.ofEpochSecond(body.timestamp)
                         .atZone(body.timezone.toTimeZone())
@@ -79,7 +87,7 @@ object WebService {
                     body.longitude,
                     body.timezone.toTimeZone(),
                     body.country.toCountry(),
-                    body.alt,
+                    validatedAlt,
                     body.batt,
                     body.acc,
                     body.vac,
