@@ -226,17 +226,17 @@ object DatabaseService {
     }
 
     // Sick days tracking methods
-    fun addSickDay(date: LocalDate, note: String = "") {
+    fun addSickDay(date: LocalDate, severity: Int = 5) {
         sessionOf(dataSource).use { session ->
             session.execute(
                 queryOf(
                     // language=SQL
                     """
-                        INSERT INTO country_days_tracker_bot.sick_days (sick_date, note)
-                        VALUES (toDate(?), toString(?))
+                        INSERT INTO country_days_tracker_bot.sick_days (sick_date, severity)
+                        VALUES (toDate(?), toUInt8(?))
                     """.trimIndent(),
                     date,
-                    note
+                    severity
                 )
             )
         }
