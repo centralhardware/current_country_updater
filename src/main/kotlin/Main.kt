@@ -1,5 +1,6 @@
 import ChannelManager.registerHashtagHandler
 import ChannelManager.updateChannelTitle
+import commands.registerSickCommand
 import commands.registerStatCommand
 import commands.registerSubscribeCommand
 import dev.inmo.krontab.doInfinity
@@ -35,12 +36,14 @@ suspend fun main() {
         // Set bot commands
         setMyCommands(
             BotCommand("stat", "show statistics"),
-            BotCommand("subscribe", "subscribe to location updates")
+            BotCommand("subscribe", "subscribe to location updates"),
+            BotCommand("sick", "mark day as sick")
         )
 
         registerHashtagHandler(Config.CHANNEL_ID)
         registerStatCommand()
         registerSubscribeCommand()
+        registerSickCommand()
     }.second.join()
 
 }

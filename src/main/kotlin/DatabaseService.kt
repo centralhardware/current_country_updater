@@ -3,6 +3,7 @@ import kotliquery.queryOf
 import kotliquery.sessionOf
 import org.flywaydb.core.Flyway
 import java.sql.SQLException
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.Properties
@@ -161,6 +162,22 @@ object DatabaseService {
         )
     }
 
+    fun getLastTimezone(): ZoneId? {
+        return sessionOf(dataSource).run(
+            queryOf(
+                // language=SQL
+                """
+                    SELECT tzname
+                    FROM country_days_tracker_bot.country_days_tracker
+                    ORDER BY date_time DESC
+                    LIMIT 1
+                """.trimIndent()
+            ).map { row ->
+                ZoneId.of(row.string("tzname"))
+            }.asSingle
+        )
+    }
+
     fun getCurrentCountryLength(): Pair<String, Int> {
         return sessionOf(dataSource).run(
             queryOf(
@@ -206,5 +223,22 @@ object DatabaseService {
                 Pair(row.string("country"), row.int("days_in_country"))
             }.asSingle
         ) ?: throw IllegalStateException("No country data found in database")
+    }
+
+    // Sick days tracking methods
+    fun addSickDay(date: LocalDate, note: String = "") {
+        sessionOf(dataSource).use { session ->
+            session.execute(
+                queryOf(
+                    // language=SQL
+                    """
+                        INSERT INTO country_days_tracker_bot.sick_days (sick_date, note)
+                        VALUES (toDate(?), toString(?))
+                    """.trimIndent(),
+                    date,
+                    note
+                )
+            )
+        }
     }
 }
