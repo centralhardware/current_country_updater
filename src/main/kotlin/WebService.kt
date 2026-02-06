@@ -72,7 +72,7 @@ object WebService {
             KSLog.info("Processing location update: $body")
 
             // Validate altitude: if it's above 12000 meters (unreasonable), set it to 0
-            val validatedAlt = if (body.alt > 12000) {
+            val validatedAlt = if (body.alt > 14000) {
                 KSLog.info("Altitude ${body.alt} exceeds 12000 meters, setting to 0")
                 0
             } else {
