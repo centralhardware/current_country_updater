@@ -225,7 +225,6 @@ object DatabaseService {
         ) ?: throw IllegalStateException("No country data found in database")
     }
 
-    // Sick days tracking methods
     fun addSickDay(date: LocalDate, severity: Int = 5) {
         sessionOf(dataSource).use { session ->
             session.execute(
