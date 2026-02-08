@@ -3,7 +3,6 @@ import kotliquery.queryOf
 import kotliquery.sessionOf
 import org.flywaydb.core.Flyway
 import java.sql.SQLException
-import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.Properties
@@ -225,19 +224,4 @@ object DatabaseService {
         ) ?: throw IllegalStateException("No country data found in database")
     }
 
-    fun addSickDay(date: LocalDate, severity: Int = 5) {
-        sessionOf(dataSource).use { session ->
-            session.execute(
-                queryOf(
-                    // language=SQL
-                    """
-                        INSERT INTO country_days_tracker_bot.sick_days (sick_date, severity)
-                        VALUES (toDate(?), toUInt8(?))
-                    """.trimIndent(),
-                    date,
-                    severity
-                )
-            )
-        }
-    }
 }
