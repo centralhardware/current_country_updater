@@ -60,7 +60,7 @@ object ChannelManager {
         }
 
         KSLog.info("Current: $currentCountry. Channel: $channelCountry")
-        if (channelCountry == currentCountry) {
+        if (channelCountry.equals(currentCountry, ignoreCase = true)) {
             KSLog.info("Channel title is already up to date")
             return
         }
