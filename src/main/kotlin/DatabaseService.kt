@@ -48,8 +48,6 @@ object DatabaseService {
         ghash: String,
         p: Double,
         addr: String,
-        bssid: String?,
-        ssid: String?,
         bs: Int
     ) {
         sessionOf(dataSource).use { session ->
@@ -91,8 +89,8 @@ object DatabaseService {
                             toString(?) AS ghash,
                             toFloat64(?) AS p,
                             toString(?) AS addr,
-                            toString(?) AS bssid,
-                            toString(?) AS ssid,
+                            '' AS bssid,
+                            '' AS ssid,
                             toUInt8(?) AS bs
                     """.trimIndent(),
                     dateTime,
@@ -109,8 +107,6 @@ object DatabaseService {
                     ghash,
                     p,
                     addr,
-                    bssid,
-                    ssid,
                     bs
                 )
             )

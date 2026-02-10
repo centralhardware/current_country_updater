@@ -32,8 +32,6 @@ data class LocationRequest(
     val ghash: String,
     val p: Double,
     val addr: String,
-    val bssid: String? = null,
-    val ssid: String? = null,
     val bs: Int? = null
 )
 
@@ -63,7 +61,7 @@ object WebService {
             KSLog.info("Processing location update: $body")
 
             val validatedAlt = if (body.alt !in 0..14000) {
-                KSLog.info("Altitude ${body.alt} exceeds 12000 meters, setting to 0")
+                KSLog.info("Altitude ${body.alt} is out of 0..14000 range, setting to 0")
                 0
             } else {
                 body.alt
@@ -86,8 +84,6 @@ object WebService {
                     body.ghash,
                     body.p,
                     body.addr,
-                    body.bssid,
-                    body.ssid,
                     body.bs ?: 0
                 )
 
