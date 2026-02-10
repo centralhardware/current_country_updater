@@ -9,8 +9,6 @@ object Config {
 
     const val CHANNEL_UPDATE_CRON = "0 /10 * * *"
 
-    const val SUBSCRIPTION_DURATION_MINUTES = 30L
-
     const val TOTAL_COUNTRIES = 193
 
 }

@@ -1,7 +1,7 @@
 import ChannelManager.registerHashtagHandler
 import ChannelManager.updateChannelTitle
+import commands.registerMapCommand
 import commands.registerStatCommand
-import commands.registerSubscribeCommand
 import dev.inmo.krontab.doInfinity
 import dev.inmo.micro_utils.common.Warning
 import dev.inmo.tgbotapi.AppConfig
@@ -18,15 +18,6 @@ suspend fun main() {
 
     longPolling({ restrictAccess(EnvironmentVariableUserAccessChecker()) }) {
         launch {
-            WebService.locationUpdates.collect { update ->
-                LocationSubscriptionManager.cleanupExpiredSubscriptions()
-                with(LocationSubscriptionManager) {
-                    updateAllSubscribers(update.latitude, update.longitude)
-                }
-            }
-        }
-
-        launch {
             doInfinity(Config.CHANNEL_UPDATE_CRON) {
                 updateChannelTitle(Config.CHANNEL_ID, Config.CHANEL_TITLE_PATTERN)
             }
@@ -35,12 +26,12 @@ suspend fun main() {
         // Set bot commands
         setMyCommands(
             BotCommand("stat", "show statistics"),
-            BotCommand("subscribe", "subscribe to location updates")
+            BotCommand("map", "show last location on map")
         )
 
         registerHashtagHandler(Config.CHANNEL_ID)
         registerStatCommand()
-        registerSubscribeCommand()
+        registerMapCommand()
     }.second.join()
 
 }
