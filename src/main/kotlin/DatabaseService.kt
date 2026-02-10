@@ -161,22 +161,6 @@ object DatabaseService {
         )
     }
 
-    fun getLastTimezone(): ZoneId? {
-        return sessionOf(dataSource).run(
-            queryOf(
-                // language=SQL
-                """
-                    SELECT tzname
-                    FROM country_days_tracker_bot.country_days_tracker
-                    ORDER BY date_time DESC
-                    LIMIT 1
-                """.trimIndent()
-            ).map { row ->
-                ZoneId.of(row.string("tzname"))
-            }.asSingle
-        )
-    }
-
     fun getCurrentCountryLength(): Pair<String, Int> {
         return sessionOf(dataSource).run(
             queryOf(

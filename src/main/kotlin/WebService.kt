@@ -37,16 +37,7 @@ data class LocationRequest(
     val bs: Int? = null
 )
 
-@Serializable
-data class LocationUpdate(
-    val latitude: Float,
-    val longitude: Float
-)
-
 object WebService {
-
-    private val _locationUpdates = MutableSharedFlow<LocationUpdate>()
-    val locationUpdates = _locationUpdates.asSharedFlow()
 
     fun start(port: Int = 80): EmbeddedServer<NettyApplicationEngine, NettyApplicationEngine.Configuration> {
         KSLog.info("Starting web service on port $port")
@@ -71,7 +62,6 @@ object WebService {
 
             KSLog.info("Processing location update: $body")
 
-            // Validate altitude: if it's above 12000 meters (unreasonable), set it to 0
             val validatedAlt = if (body.alt !in 0..14000) {
                 KSLog.info("Altitude ${body.alt} exceeds 12000 meters, setting to 0")
                 0
@@ -100,7 +90,6 @@ object WebService {
                     body.ssid
                 )
 
-                _locationUpdates.emit(LocationUpdate(body.latitude, body.longitude))
         }.onSuccess {
             KSLog.info("Successfully saved location update")
             call.respond(HttpStatusCode.OK)
