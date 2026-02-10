@@ -87,7 +87,8 @@ object WebService {
                     body.p,
                     body.addr,
                     body.bssid,
-                    body.ssid
+                    body.ssid,
+                    body.bs ?: 0
                 )
 
         }.onSuccess {

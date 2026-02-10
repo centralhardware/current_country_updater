@@ -49,7 +49,8 @@ object DatabaseService {
         p: Double,
         addr: String,
         bssid: String?,
-        ssid: String?
+        ssid: String?,
+        bs: Int
     ) {
         sessionOf(dataSource).use { session ->
             session.execute(
@@ -72,7 +73,8 @@ object DatabaseService {
                             p,
                             addr,
                             bssid,
-                            ssid
+                            ssid,
+                            bs
                         )
                         SELECT
                             toDateTime(?) AS date_time,
@@ -90,7 +92,8 @@ object DatabaseService {
                             toFloat64(?) AS p,
                             toString(?) AS addr,
                             toString(?) AS bssid,
-                            toString(?) AS ssid
+                            toString(?) AS ssid,
+                            toUInt8(?) AS bs
                     """.trimIndent(),
                     dateTime,
                     latitude,
@@ -107,7 +110,8 @@ object DatabaseService {
                     p,
                     addr,
                     bssid,
-                    ssid
+                    ssid,
+                    bs
                 )
             )
         }
