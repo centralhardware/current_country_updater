@@ -17,6 +17,7 @@ object DatabaseService {
             val props = Properties().apply {
                 Config.CLICKHOUSE_USER?.let { put("user", it) }
                 Config.CLICKHOUSE_PASSWORD?.let { put("password", it) }
+                put("allow_suspicious_low_cardinality_types", "1")
             }
             val ds = DataSourceImpl(Config.CLICKHOUSE_URL, props)
 
