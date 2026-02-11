@@ -11,10 +11,21 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
 import java.time.Instant
 import java.util.*
+
+object EpochSecondsInstantSerializer : KSerializer<Instant> {
+    override val descriptor = PrimitiveSerialDescriptor("EpochSecondsInstant", PrimitiveKind.LONG)
+    override fun deserialize(decoder: Decoder): Instant = Instant.ofEpochSecond(decoder.decodeLong())
+    override fun serialize(encoder: Encoder, value: Instant) = encoder.encodeLong(value.epochSecond)
+}
 
 @Serializable
 data class LocationRequest(
@@ -22,7 +33,8 @@ data class LocationRequest(
     val longitude: Float,
     val timezone: String,
     val country: String,
-    val timestamp: Long,
+    @Serializable(with = EpochSecondsInstantSerializer::class)
+    val timestamp: Instant,
     val alt: Int,
     val batt: Int,
     val acc: Int,
@@ -70,7 +82,7 @@ object WebService {
             }
 
             DatabaseService.save(
-                    Instant.ofEpochSecond(body.timestamp)
+                    body.timestamp
                         .atZone(body.timezone.toTimeZone())
                         .toLocalDateTime(),
                     body.latitude,
