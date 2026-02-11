@@ -35,6 +35,8 @@ data class LocationRequest(
     val bs: Int? = null
 )
 
+private val json = Json { ignoreUnknownKeys = true }
+
 object WebService {
 
     fun start(port: Int = 80): EmbeddedServer<NettyApplicationEngine, NettyApplicationEngine.Configuration> {
@@ -42,7 +44,7 @@ object WebService {
 
         return embeddedServer(Netty, port = port) {
             install(ContentNegotiation) {
-                json()
+                json(json)
             }
 
             routing {
@@ -56,7 +58,7 @@ object WebService {
     private suspend fun handleLocationUpdate(call: ApplicationCall) {
         val bodyString = call.receiveText()
         runCatching {
-            val body = Json.decodeFromString<LocationRequest>(bodyString)
+            val body = json.decodeFromString<LocationRequest>(bodyString)
 
             KSLog.info("Processing location update: $body")
 
