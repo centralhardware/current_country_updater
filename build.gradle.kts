@@ -42,7 +42,7 @@ dependencies {
 
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.10.0")
 
-    implementation("org.flywaydb:flyway-core:12.0.0")
+    implementation("org.flywaydb:flyway-core:12.0.1")
     implementation("org.flywaydb:flyway-database-clickhouse:10.24.0")
 
     testImplementation(kotlin("test"))
