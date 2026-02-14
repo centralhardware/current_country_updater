@@ -9,8 +9,10 @@ import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.launch
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.PrimitiveKind
@@ -69,19 +71,26 @@ object WebService {
 
     private suspend fun handleLocationUpdate(call: ApplicationCall) {
         val bodyString = call.receiveText()
-        runCatching {
-            val body = json.decodeFromString<LocationRequest>(bodyString)
+        val body = try {
+            json.decodeFromString<LocationRequest>(bodyString)
+        } catch (e: Exception) {
+            KSLog.info("Failed to parse location update: ${e.message}. Body: $bodyString")
+            call.respond(HttpStatusCode.BadRequest, "Invalid request: ${e.message}")
+            return
+        }
 
-            KSLog.info("Processing location update: $body")
+        KSLog.info("Processing location update: $body")
 
-            val validatedAlt = if (body.alt !in 0..14000) {
-                KSLog.info("Altitude ${body.alt} is out of 0..14000 range, setting to 0")
-                0
-            } else {
-                body.alt
-            }
+        val validatedAlt = if (body.alt !in 0..14000) {
+            KSLog.info("Altitude ${body.alt} is out of 0..14000 range, setting to 0")
+            0
+        } else {
+            body.alt
+        }
 
-            DatabaseService.save(
+        call.application.launch(Dispatchers.IO) {
+            runCatching {
+                DatabaseService.save(
                     body.timestamp
                         .atZone(body.timezone.toTimeZone())
                         .toLocalDateTime(),
@@ -100,17 +109,14 @@ object WebService {
                     body.addr,
                     body.bs ?: 0
                 )
-
-        }.onSuccess {
-            KSLog.info("Successfully saved location update")
-            call.respond(HttpStatusCode.OK)
-        }.onFailure { error ->
-            KSLog.info("Failed to save location update: ${error.message}. Body: $bodyString")
-            call.respond(
-                HttpStatusCode.InternalServerError,
-                "Failed to save location data: ${error.message}"
-            )
+            }.onSuccess {
+                KSLog.info("Successfully saved location update")
+            }.onFailure { error ->
+                KSLog.info("Failed to save location update: ${error.message}. Body: $bodyString")
+            }
         }
+
+        call.respond(HttpStatusCode.OK)
     }
 
     private fun String.toTimeZone() = TimeZone.getTimeZone(this).toZoneId()
