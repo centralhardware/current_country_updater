@@ -46,8 +46,8 @@ dependencies {
     implementation("org.flywaydb:flyway-database-clickhouse:10.24.0")
 
     testImplementation(kotlin("test"))
-    testImplementation("org.junit.jupiter:junit-jupiter-api:6.0.2")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:6.0.2")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:6.0.3")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:6.0.3")
 }
 
 jib {
