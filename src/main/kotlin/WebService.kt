@@ -46,6 +46,9 @@ data class LocationRequest(
     val ghash: String,
     val p: Double,
     val addr: String,
+    val vel: Int = 0,
+    val cog: Int = 0,
+    val m: Int = 0,
     val bs: Int? = null
 )
 
@@ -107,6 +110,9 @@ object WebService {
                     body.ghash,
                     body.p,
                     body.addr,
+                    body.vel,
+                    body.cog,
+                    body.m,
                     body.bs ?: 0
                 )
             }.onSuccess {

@@ -48,6 +48,9 @@ object DatabaseService {
         ghash: String,
         p: Double,
         addr: String,
+        vel: Int,
+        cog: Int,
+        m: Int,
         bs: Int
     ) {
         sessionOf(dataSource).use { session ->
@@ -72,6 +75,9 @@ object DatabaseService {
                             addr,
                             bssid,
                             ssid,
+                            vel,
+                            cog,
+                            m,
                             bs
                         )
                         SELECT
@@ -91,6 +97,9 @@ object DatabaseService {
                             toString(?) AS addr,
                             '' AS bssid,
                             '' AS ssid,
+                            toUInt16(?) AS vel,
+                            toUInt16(?) AS cog,
+                            toInt8(?) AS m,
                             toUInt8(?) AS bs
                     """.trimIndent(),
                     dateTime,
@@ -107,6 +116,9 @@ object DatabaseService {
                     ghash,
                     p,
                     addr,
+                    vel,
+                    cog,
+                    m,
                     bs
                 )
             )
