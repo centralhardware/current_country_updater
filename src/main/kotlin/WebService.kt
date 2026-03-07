@@ -21,6 +21,7 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
 import java.time.Instant
+import java.time.ZoneId
 import java.util.*
 
 object EpochSecondsInstantSerializer : KSerializer<Instant> {
@@ -125,7 +126,15 @@ object WebService {
         call.respond(HttpStatusCode.OK)
     }
 
-    private fun String.toTimeZone() = TimeZone.getTimeZone(this).toZoneId()
+    private fun String.toTimeZone(): ZoneId {
+        return try {
+            ZoneId.of(this)
+        } catch (e: Exception) {
+            val lastValid = DatabaseService.getLastValidTimezone() ?: ZoneId.of("UTC")
+            KSLog.info("Invalid timezone '$this', using last valid from DB: $lastValid")
+            lastValid
+        }
+    }
 
     private fun String.toCountry() = Locale.of("en", this).displayCountry
 }

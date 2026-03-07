@@ -152,6 +152,24 @@ object DatabaseService {
         val locality: String
     )
 
+    fun getLastValidTimezone(): ZoneId? {
+        return sessionOf(dataSource).run(
+            queryOf(
+                // language=SQL
+                """
+                    SELECT tzname
+                    FROM country_days_tracker_bot.country_days_tracker
+                    WHERE tzname IN (SELECT time_zone FROM system.time_zones)
+                      AND tzname NOT LIKE 'Etc/%'
+                    ORDER BY date_time DESC
+                    LIMIT 1
+                """.trimIndent()
+            ).map { row ->
+                ZoneId.of(row.string("tzname"))
+            }.asSingle
+        )
+    }
+
     fun getLastLocation(): Location? {
         return sessionOf(dataSource).run(
             queryOf(
