@@ -161,6 +161,9 @@ object DatabaseService {
                     FROM country_days_tracker_bot.country_days_tracker
                     WHERE tzname IN (SELECT time_zone FROM system.time_zones)
                       AND tzname NOT LIKE 'Etc/%'
+                      AND tzname NOT LIKE 'GMT%'
+                      AND tzname NOT LIKE 'UTC%'
+                      AND tzname LIKE '%/%'
                     ORDER BY date_time DESC
                     LIMIT 1
                 """.trimIndent()
