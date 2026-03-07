@@ -128,7 +128,11 @@ object WebService {
 
     private fun String.toTimeZone(): ZoneId {
         return try {
-            ZoneId.of(this)
+            val zone = ZoneId.of(this)
+            if (zone.id.startsWith("Etc/") || zone.id.startsWith("GMT") || zone.id.startsWith("UTC") || !zone.id.contains("/")) {
+                throw IllegalArgumentException("Non-geographic timezone: $zone")
+            }
+            zone
         } catch (e: Exception) {
             val lastValid = DatabaseService.getLastValidTimezone() ?: ZoneId.of("UTC")
             KSLog.info("Invalid timezone '$this', using last valid from DB: $lastValid")
