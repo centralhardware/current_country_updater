@@ -94,13 +94,14 @@ object WebService {
 
         call.application.launch(Dispatchers.IO) {
             runCatching {
+                val timezone = body.timezone.toTimeZone()
                 DatabaseService.save(
                     body.timestamp
-                        .atZone(body.timezone.toTimeZone())
+                        .atZone(timezone)
                         .toLocalDateTime(),
                     body.latitude,
                     body.longitude,
-                    body.timezone.toTimeZone(),
+                    timezone,
                     body.country.toCountry(),
                     validatedAlt,
                     body.batt,
