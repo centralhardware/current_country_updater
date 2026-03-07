@@ -94,7 +94,7 @@ object WebService {
 
         call.application.launch(Dispatchers.IO) {
             runCatching {
-                val (timezone, isFallback) = body.timezone.toTimeZone()
+                val timezone = body.timezone.toTimeZone()
                 DatabaseService.save(
                     body.timestamp
                         .atZone(timezone)
@@ -102,7 +102,7 @@ object WebService {
                     body.latitude,
                     body.longitude,
                     timezone,
-                    if (isFallback) "" else body.country.toCountry(),
+                    body.country.toCountry(),
                     validatedAlt,
                     body.batt,
                     body.acc,
@@ -127,19 +127,7 @@ object WebService {
         call.respond(HttpStatusCode.OK)
     }
 
-    private fun String.toTimeZone(): Pair<ZoneId, Boolean> {
-        return try {
-            val zone = ZoneId.of(this)
-            if (zone.id.startsWith("Etc/") || zone.id.startsWith("GMT") || zone.id.startsWith("UTC") || !zone.id.contains("/")) {
-                throw IllegalArgumentException("Non-geographic timezone: $zone")
-            }
-            zone to false
-        } catch (e: Exception) {
-            val lastValid = DatabaseService.getLastValidTimezone() ?: ZoneId.of("UTC")
-            KSLog.info("Invalid timezone '$this', using last valid from DB: $lastValid")
-            lastValid to true
-        }
-    }
+    private fun String.toTimeZone() = TimeZone.getTimeZone(this).toZoneId()
 
     private fun String.toCountry() = Locale.of("en", this).displayCountry
 }
