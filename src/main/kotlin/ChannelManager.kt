@@ -75,7 +75,7 @@ object ChannelManager {
 
     private fun getCurrentCountry(): String? {
         val location = DatabaseService.getLastLocation()
-        return location?.country
+        return location?.country?.ifEmpty { null }
     }
 
     private fun buildLocationHashtags(): String {
