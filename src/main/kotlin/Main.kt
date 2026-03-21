@@ -2,6 +2,7 @@ import ChannelManager.registerHashtagHandler
 import ChannelManager.updateChannelTitle
 import commands.registerMapCommand
 import commands.registerStatCommand
+import commands.registerTagCommands
 import dev.inmo.krontab.doInfinity
 import dev.inmo.micro_utils.common.Warning
 import dev.inmo.tgbotapi.AppConfig
@@ -26,12 +27,17 @@ suspend fun main() {
         // Set bot commands
         setMyCommands(
             BotCommand("stat", "show statistics"),
-            BotCommand("map", "show last location on map")
+            BotCommand("map", "show last location on map"),
+            BotCommand("addtag", "add temporary tag"),
+            BotCommand("removetag", "remove temporary tag"),
+            BotCommand("tags", "list active tags"),
+            BotCommand("cleartags", "remove all tags")
         )
 
         registerHashtagHandler(Config.CHANNEL_ID)
         registerStatCommand()
         registerMapCommand()
+        registerTagCommands()
     }.second.join()
 
 }

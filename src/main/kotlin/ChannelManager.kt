@@ -86,6 +86,8 @@ object ChannelManager {
         } else {
             ""
         }
-        return "\n\n#$country $city"
+        val extraTags = TagManager.getActiveTags()
+        val extra = if (extraTags.isNotEmpty()) " ${extraTags.joinToString(" ")}" else ""
+        return "\n\n#$country $city$extra"
     }
 }
