@@ -4,23 +4,19 @@ import TagManager
 import dev.inmo.tgbotapi.extensions.api.send.reply
 import dev.inmo.tgbotapi.extensions.behaviour_builder.BehaviourContext
 import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onCommand
+import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onCommandWithArgs
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
 fun BehaviourContext.registerTagCommands() {
-    onCommand("addtag") { message ->
-        val args = message.content.text
-            .removePrefix("/addtag")
-            .trim()
-
+    onCommandWithArgs("addtag") { message, args ->
         if (args.isEmpty()) {
             reply(message, "Usage: /addtag <tag> [duration]\nDuration examples: 1h, 2d, 30m")
-            return@onCommand
+            return@onCommandWithArgs
         }
 
-        val parts = args.split("\\s+".toRegex(), limit = 2)
-        val tagName = parts[0]
-        val expiresAt = if (parts.size > 1) parseDuration(parts[1]) else null
+        val tagName = args[0]
+        val expiresAt = args.getOrNull(1)?.let { parseDuration(it) }
 
         TagManager.addTag(tagName, expiresAt)
 
@@ -28,14 +24,11 @@ fun BehaviourContext.registerTagCommands() {
         reply(message, "Tag ${TagManager.getActiveTags().last { it.contains(tagName.removePrefix("#").replace(" ", "_")) }} added$expiryText")
     }
 
-    onCommand("removetag") { message ->
-        val tagName = message.content.text
-            .removePrefix("/removetag")
-            .trim()
-
-        if (tagName.isEmpty()) {
+    onCommandWithArgs("removetag") { message, args ->
+        val tagName = args.firstOrNull()
+        if (tagName == null) {
             reply(message, "Usage: /removetag <tag>")
-            return@onCommand
+            return@onCommandWithArgs
         }
 
         if (TagManager.removeTag(tagName)) {
