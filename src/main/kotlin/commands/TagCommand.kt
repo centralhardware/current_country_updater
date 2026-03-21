@@ -20,7 +20,8 @@ fun BehaviourContext.registerTagCommands() {
 
         TagManager.addTag(tagName, expiresAt)
 
-        val expiryText = if (expiresAt != null) " (expires: $expiresAt)" else " (until removed or restart)"
+        val durationText = args.getOrNull(1)
+        val expiryText = if (durationText != null) " (expires in $durationText)" else ""
         reply(message, "Tag ${TagManager.getActiveTags().last { it.contains(tagName.removePrefix("#").replace(" ", "_")) }} added$expiryText")
     }
 
