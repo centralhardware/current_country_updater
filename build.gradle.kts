@@ -13,7 +13,7 @@ repositories {
 }
 
 val ktgbotapiVersion = "32.0.0"
-val ktorVersion = "3.4.1"
+val ktorVersion = "3.4.2"
 val clickhouseVersion = "0.9.8"
 
 dependencies {
