@@ -80,9 +80,9 @@ object ChannelManager {
 
     private fun buildLocationHashtags(): String {
         val location = DatabaseService.getLastLocation() ?: return ""
-        val country = location.country.replace(" ", "_")
+        val country = TagManager.sanitizeForHashtag(location.country)
         val city = if (location.locality.isNotEmpty()) {
-            "#${location.locality.replace(" ", "_")}"
+            "#${TagManager.sanitizeForHashtag(location.locality)}"
         } else {
             ""
         }

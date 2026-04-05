@@ -22,7 +22,7 @@ fun BehaviourContext.registerTagCommands() {
 
         val durationText = args.getOrNull(1)
         val expiryText = if (durationText != null) " (expires in $durationText)" else ""
-        reply(message, "Tag ${TagManager.getActiveTags().last { it.contains(tagName.removePrefix("#").replace(" ", "_")) }} added$expiryText")
+        reply(message, "Tag ${TagManager.getActiveTags().last { it.contains(TagManager.sanitizeForHashtag(tagName.removePrefix("#"))) }} added$expiryText")
     }
 
     onCommandWithArgs("removetag") { message, args ->

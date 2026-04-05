@@ -30,8 +30,12 @@ object TagManager {
         tags.clear()
     }
 
+    fun sanitizeForHashtag(value: String): String {
+        return value.replace(" ", "_").replace(Regex("[^\\p{L}_]"), "")
+    }
+
     private fun normalizeTag(name: String): String {
-        val tag = name.removePrefix("#").replace(" ", "_")
+        val tag = sanitizeForHashtag(name.removePrefix("#"))
         return "#$tag"
     }
 }
