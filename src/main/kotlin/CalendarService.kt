@@ -1,32 +1,35 @@
-import java.time.format.DateTimeFormatter
+import net.fortuna.ical4j.model.Calendar
+import net.fortuna.ical4j.model.component.VEvent
+import net.fortuna.ical4j.model.property.Color
+import net.fortuna.ical4j.model.property.Method
+import net.fortuna.ical4j.model.property.Uid
+import net.fortuna.ical4j.model.property.XProperty
 
 object CalendarService {
 
-    private val icalDateFormat = DateTimeFormatter.ofPattern("yyyyMMdd")
-
     fun buildCalendar(): String {
         val sessions = DatabaseService.getCountrySessions()
-        return buildString {
-            appendLine("BEGIN:VCALENDAR")
-            appendLine("VERSION:2.0")
-            appendLine("PRODID:-//Current Country Updater//EN")
-            appendLine("X-WR-CALNAME:Country Visits")
-            appendLine("METHOD:PUBLISH")
-            for (session in sessions) {
-                val emoji = runCatching { countryCodeToEmoji(session.country) }.getOrDefault("")
-                val summary = "$emoji ${session.country}".trim()
-                // iCal DTEND for all-day events is exclusive, so add 1 day
-                val endExclusive = session.endDay.plusDays(1)
-                appendLine("BEGIN:VEVENT")
-                appendLine("DTSTART;VALUE=DATE:${session.startDay.format(icalDateFormat)}")
-                appendLine("DTEND;VALUE=DATE:${endExclusive.format(icalDateFormat)}")
-                appendLine("SUMMARY:$summary")
-                appendLine("COLOR:${countryColor(session.country)}")
-                appendLine("UID:${session.startDay}-${session.country.replace(" ", "-").lowercase()}@country-tracker")
-                appendLine("END:VEVENT")
-            }
-            appendLine("END:VCALENDAR")
+
+        val calendar = Calendar()
+            .withProdId("-//Current Country Updater//EN")
+            .withDefaults()
+            .withProperty(XProperty("X-WR-CALNAME", "Country Visits"))
+            .withProperty(Method(Method.VALUE_PUBLISH))
+            .getFluentTarget()
+
+        for (session in sessions) {
+            val emoji = runCatching { countryCodeToEmoji(session.country) }.getOrDefault("")
+            val summary = "$emoji ${session.country}".trim()
+            val endExclusive = session.endDay.plusDays(1)
+
+            val event = VEvent(session.startDay, endExclusive, summary)
+                .add<VEvent>(Color().apply { setValue(countryColor(session.country)) })
+                .add<VEvent>(Uid("${session.startDay}-${session.country.replace(" ", "-").lowercase()}@country-tracker"))
+
+            calendar.add<Calendar>(event)
         }
+
+        return calendar.toString()
     }
 
     private fun countryColor(country: String): String {
