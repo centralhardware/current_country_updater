@@ -22,6 +22,7 @@ import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
 import java.time.Instant
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.*
 
 object EpochSecondsInstantSerializer : KSerializer<Instant> {
@@ -68,6 +69,9 @@ object WebService {
             routing {
                 post("/location") {
                     handleLocationUpdate(call)
+                }
+                get("/calendar/${Config.CALENDAR_SECRET}/calendar.ics") {
+                    handleCalendar(call)
                 }
             }
         }.start(wait = false)
@@ -125,6 +129,33 @@ object WebService {
         }
 
         call.respond(HttpStatusCode.OK)
+    }
+
+    private val icalDateFormat = DateTimeFormatter.ofPattern("yyyyMMdd")
+
+    private suspend fun handleCalendar(call: ApplicationCall) {
+        val sessions = DatabaseService.getCountrySessions()
+        val calendar = buildString {
+            appendLine("BEGIN:VCALENDAR")
+            appendLine("VERSION:2.0")
+            appendLine("PRODID:-//Current Country Updater//EN")
+            appendLine("X-WR-CALNAME:Country Visits")
+            appendLine("METHOD:PUBLISH")
+            for (session in sessions) {
+                val emoji = runCatching { countryCodeToEmoji(session.country) }.getOrDefault("")
+                val summary = "$emoji ${session.country}".trim()
+                // iCal DTEND for all-day events is exclusive, so add 1 day
+                val endExclusive = session.endDay.plusDays(1)
+                appendLine("BEGIN:VEVENT")
+                appendLine("DTSTART;VALUE=DATE:${session.startDay.format(icalDateFormat)}")
+                appendLine("DTEND;VALUE=DATE:${endExclusive.format(icalDateFormat)}")
+                appendLine("SUMMARY:$summary")
+                appendLine("UID:${session.startDay}-${session.country.replace(" ", "-").lowercase()}@country-tracker")
+                appendLine("END:VEVENT")
+            }
+            appendLine("END:VCALENDAR")
+        }
+        call.respondText(calendar, ContentType("text", "calendar"))
     }
 
     private fun String.toTimeZone() = TimeZone.getTimeZone(this).toZoneId()

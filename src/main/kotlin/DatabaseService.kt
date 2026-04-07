@@ -173,6 +173,51 @@ object DatabaseService {
         )
     }
 
+    data class CountrySession(
+        val country: String,
+        val startDay: java.time.LocalDate,
+        val endDay: java.time.LocalDate
+    )
+
+    fun getCountrySessions(): List<CountrySession> {
+        return sessionOf(dataSource).run(
+            queryOf(
+                // language=SQL
+                """
+                    WITH
+                        data AS (
+                            SELECT
+                                toDate(date_time) AS day,
+                                country
+                            FROM country_days_tracker_bot.country_days_tracker
+                            WHERE country != ''
+                            GROUP BY day, country
+                        ),
+                        with_sessions AS (
+                            SELECT
+                                *,
+                                dense_rank() OVER (ORDER BY day) -
+                                dense_rank() OVER (PARTITION BY country ORDER BY day) AS session_id
+                            FROM data
+                        )
+                    SELECT
+                        country,
+                        toString(MIN(day)) AS start_day,
+                        toString(MAX(day)) AS end_day
+                    FROM with_sessions
+                    GROUP BY country, session_id
+                    ORDER BY start_day
+                """.trimIndent()
+            ).map { row ->
+                CountrySession(
+                    row.string("country"),
+                    java.time.LocalDate.parse(row.string("start_day")),
+                    java.time.LocalDate.parse(row.string("end_day"))
+                )
+            }.asList
+        )
+    }
+
     fun getCurrentCountryLength(): Pair<String, Int> {
         return sessionOf(dataSource).run(
             queryOf(

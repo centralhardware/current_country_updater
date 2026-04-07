@@ -7,6 +7,8 @@ object Config {
     val CLICKHOUSE_USER: String? = System.getenv("CLICKHOUSE_USER")
     val CLICKHOUSE_PASSWORD: String? = System.getenv("CLICKHOUSE_PASSWORD")
 
+    val CALENDAR_SECRET: String = System.getenv("CALENDAR_SECRET")
+
     const val CHANNEL_UPDATE_CRON = "0 /10 * * *"
 
     const val TOTAL_COUNTRIES = 193
