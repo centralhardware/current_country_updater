@@ -150,12 +150,18 @@ object WebService {
                 appendLine("DTSTART;VALUE=DATE:${session.startDay.format(icalDateFormat)}")
                 appendLine("DTEND;VALUE=DATE:${endExclusive.format(icalDateFormat)}")
                 appendLine("SUMMARY:$summary")
+                appendLine("COLOR:${countryColor(session.country)}")
                 appendLine("UID:${session.startDay}-${session.country.replace(" ", "-").lowercase()}@country-tracker")
                 appendLine("END:VEVENT")
             }
             appendLine("END:VCALENDAR")
         }
         call.respondText(calendar, ContentType("text", "calendar"))
+    }
+
+    private fun countryColor(country: String): String {
+        val hue = (country.hashCode().and(Int.MAX_VALUE)) % 360
+        return "hsl($hue, 70%, 50%)"
     }
 
     private fun String.toTimeZone() = TimeZone.getTimeZone(this).toZoneId()
