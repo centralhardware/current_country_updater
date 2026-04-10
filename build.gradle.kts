@@ -40,7 +40,7 @@ dependencies {
     implementation("io.ktor:ktor-server-core:$ktorVersion")
     implementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
 
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.10.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
 
     implementation("org.mnode.ical4j:ical4j:4.2.5")
 
