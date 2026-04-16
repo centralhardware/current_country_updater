@@ -31,7 +31,7 @@ object TagManager {
     }
 
     fun sanitizeForHashtag(value: String): String {
-        return value.replace(" ", "_").replace(Regex("[^\\p{L}_]"), "")
+        return value.replace(" ", "_").replace(Regex("[^\\p{L}\\p{N}_]"), "")
     }
 
     private fun normalizeTag(name: String): String {
