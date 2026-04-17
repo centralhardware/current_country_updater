@@ -44,7 +44,7 @@ dependencies {
 
     implementation("org.mnode.ical4j:ical4j:4.2.5")
 
-    implementation("org.flywaydb:flyway-core:12.3.0")
+    implementation("org.flywaydb:flyway-core:12.4.0")
     implementation("org.flywaydb:flyway-database-clickhouse:10.24.0")
 
     testImplementation(kotlin("test"))
