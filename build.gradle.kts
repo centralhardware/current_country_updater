@@ -25,7 +25,7 @@ dependencies {
     implementation("com.clickhouse:clickhouse-http-client:$clickhouseVersion")
     implementation("com.github.seratch:kotliquery:1.9.1")
 
-    implementation("dev.inmo:krontab:2.8.0")
+    implementation("dev.inmo:krontab:2.9.0")
 
     implementation("com.neovisionaries:nv-i18n:1.29")
 
