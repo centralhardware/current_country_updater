@@ -17,14 +17,13 @@ suspend fun main() {
     AppConfig.init("current_country_updater")
     WebService.start(80)
 
-    longPolling({ restrictAccess(EnvironmentVariableUserAccessChecker()) }) {
+    longPolling {
         launch {
-            doInfinity(Config.CHANNEL_UPDATE_CRON) {
+            doInfinity("0 /10 * * *") {
                 updateChannelTitle(Config.CHANNEL_ID, Config.CHANEL_TITLE_PATTERN)
             }
         }
 
-        // Set bot commands
         setMyCommands(
             BotCommand("stat", "show statistics"),
             BotCommand("map", "show last location on map"),

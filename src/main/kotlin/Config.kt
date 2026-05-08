@@ -9,8 +9,6 @@ object Config {
 
     val CALENDAR_SECRET: String = System.getenv("CALENDAR_SECRET")
 
-    const val CHANNEL_UPDATE_CRON = "0 /10 * * *"
-
     const val TOTAL_COUNTRIES = 193
 
 }
