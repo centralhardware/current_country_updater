@@ -17,7 +17,7 @@ suspend fun main() {
     AppConfig.init("current_country_updater")
     WebService.start(80)
 
-    longPolling {
+    longPolling ("CurrentCountryUpdater") {
         launch {
             doInfinity("0 /10 * * *") {
                 updateChannelTitle(Config.CHANNEL_ID, Config.CHANEL_TITLE_PATTERN)
