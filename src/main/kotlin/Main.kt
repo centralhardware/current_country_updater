@@ -14,7 +14,6 @@ import kotlinx.coroutines.launch
 
 @OptIn(Warning::class, RiskFeature::class)
 suspend fun main() {
-    AppConfig.init("current_country_updater")
     WebService.start(80)
 
     longPolling ("CurrentCountryUpdater") {
