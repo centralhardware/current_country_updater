@@ -18,6 +18,8 @@ import dev.inmo.tgbotapi.utils.regular
 
 object ChannelManager {
 
+    private var cachedCountry: String? = null
+
     fun BehaviourContext.registerHashtagHandler(channelId: Long) {
         onContentMessage {
             if (it.chat.id.chatId.long != channelId) return@onContentMessage
@@ -46,29 +48,37 @@ object ChannelManager {
     }
 
     suspend fun BehaviourContext.updateChannelTitle(channelId: Long, channelTitlePattern: String) {
-        val channelChat = bot.getChat(channelId.toChatId()).asChannelChat()
-        if (channelChat == null) {
-            KSLog.info("Failed to get channel chat")
-            return
-        }
-
-        val channelCountry = extractCountryCode(channelChat.title)
         val currentCountry = getCurrentCountry()
         if (currentCountry == null) {
             KSLog.info("Current country is not available")
             return
         }
 
-        KSLog.info("Current: $currentCountry. Channel: $channelCountry")
-        if (channelCountry.equals(currentCountry, ignoreCase = true)) {
-            KSLog.info("Channel title is already up to date")
+        if (cachedCountry.equals(currentCountry, ignoreCase = true)) {
+            KSLog.info("Channel title is already up to date (cached): $currentCountry")
             return
+        }
+
+        if (cachedCountry == null) {
+            val channelChat = bot.getChat(channelId.toChatId()).asChannelChat()
+            if (channelChat == null) {
+                KSLog.info("Failed to get channel chat")
+                return
+            }
+            val channelCountry = extractCountryCode(channelChat.title)
+            KSLog.info("Current: $currentCountry. Channel: $channelCountry")
+            if (channelCountry.equals(currentCountry, ignoreCase = true)) {
+                KSLog.info("Channel title is already up to date")
+                cachedCountry = currentCountry
+                return
+            }
         }
 
         bot.setChatTitle(
             channelId.toChatId(),
             channelTitlePattern.format(countryCodeToEmoji(currentCountry))
         )
+        cachedCountry = currentCountry
         KSLog.info("Changed country to $currentCountry")
     }
 
