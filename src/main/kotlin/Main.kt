@@ -18,7 +18,7 @@ suspend fun main() {
 
     longPolling ("CurrentCountryUpdater") {
         launch {
-            doInfinity("0 /10 * * *") {
+            doInfinity("0 /1 * * *") {
                 updateChannelTitle(Config.CHANNEL_ID, Config.CHANEL_TITLE_PATTERN)
             }
         }
