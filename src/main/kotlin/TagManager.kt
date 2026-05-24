@@ -1,33 +1,51 @@
+import kotliquery.queryOf
+import kotliquery.sessionOf
 import java.time.Instant
-import java.util.concurrent.ConcurrentHashMap
 
 object TagManager {
 
-    data class Tag(
-        val name: String,
-        val expiresAt: Instant? = null
-    ) {
-        val isExpired: Boolean get() = expiresAt != null && Instant.now().isAfter(expiresAt)
-    }
-
-    private val tags = ConcurrentHashMap<String, Tag>()
-
     fun addTag(name: String, expiresAt: Instant? = null) {
         val normalized = normalizeTag(name)
-        tags[normalized] = Tag(normalized, expiresAt)
+        sessionOf(PostgresService.dataSource).use { session ->
+            session.update(
+                queryOf(
+                    """
+                    INSERT INTO tags (name, expires_at)
+                    VALUES (?, ?)
+                    ON CONFLICT (name) DO UPDATE SET expires_at = EXCLUDED.expires_at
+                    """.trimIndent(),
+                    normalized,
+                    expiresAt
+                )
+            )   
+        }
     }
 
     fun removeTag(name: String): Boolean {
-        return tags.remove(normalizeTag(name)) != null
+        return sessionOf(PostgresService.dataSource).use { session ->
+            session.update(
+                queryOf("DELETE FROM tags WHERE name = ?", normalizeTag(name))
+            ) > 0
+        }
     }
 
     fun getActiveTags(): List<String> {
-        tags.entries.removeIf { it.value.isExpired }
-        return tags.keys().toList().sorted()
+        return sessionOf(PostgresService.dataSource).use { session ->
+            session.execute(
+                queryOf("DELETE FROM tags WHERE expires_at IS NOT NULL AND expires_at <= now()")
+            )
+            session.run(
+                queryOf("SELECT name FROM tags ORDER BY name")
+                    .map { it.string("name") }
+                    .asList
+            )
+        }
     }
 
     fun clear() {
-        tags.clear()
+        sessionOf(PostgresService.dataSource).use { session ->
+            session.execute(queryOf("DELETE FROM tags"))
+        }
     }
 
     fun sanitizeForHashtag(value: String): String {

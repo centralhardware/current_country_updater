@@ -24,6 +24,9 @@ dependencies {
     implementation("com.clickhouse:clickhouse-http-client:$clickhouseVersion")
     implementation("com.github.seratch:kotliquery:1.9.1")
 
+    implementation("org.postgresql:postgresql:42.7.4")
+    implementation("com.zaxxer:HikariCP:7.0.2")
+
     implementation("dev.inmo:krontab:2.9.0")
 
     implementation("com.neovisionaries:nv-i18n:1.29")
@@ -45,6 +48,7 @@ dependencies {
 
     implementation("org.flywaydb:flyway-core:12.6.2")
     implementation("org.flywaydb:flyway-database-clickhouse:10.24.0")
+    implementation("org.flywaydb:flyway-database-postgresql:12.6.1")
 
     testImplementation(kotlin("test"))
     testImplementation("org.junit.jupiter:junit-jupiter-api:6.1.0")
