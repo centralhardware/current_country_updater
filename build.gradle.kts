@@ -12,13 +12,13 @@ repositories {
     maven("https://jitpack.io")
 }
 
-val ktgbotapiVersion = "33.1.0"
+val ktgbotapiVersion = "34.0.0"
 val ktorVersion = "3.5.0"
 val clickhouseVersion = "0.9.8"
 
 dependencies {
     implementation("dev.inmo:tgbotapi:$ktgbotapiVersion")
-    implementation("com.github.centralhardware:ktgbotapi-commons:8b9e69dd")
+    implementation("com.github.centralhardware:ktgbotapi-commons:eb3d7671")
 
     implementation("com.clickhouse:clickhouse-jdbc:$clickhouseVersion")
     implementation("com.clickhouse:clickhouse-http-client:$clickhouseVersion")
