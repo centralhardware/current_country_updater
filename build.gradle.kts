@@ -46,9 +46,9 @@ dependencies {
 
     implementation("org.mnode.ical4j:ical4j:4.2.5")
 
-    implementation("org.flywaydb:flyway-core:12.8.1")
+    implementation("org.flywaydb:flyway-core:12.9.0")
     implementation("org.flywaydb:flyway-database-clickhouse:10.24.0")
-    implementation("org.flywaydb:flyway-database-postgresql:12.8.1")
+    implementation("org.flywaydb:flyway-database-postgresql:12.9.0")
 
     testImplementation(kotlin("test"))
     testImplementation("org.junit.jupiter:junit-jupiter-api:6.1.0")
