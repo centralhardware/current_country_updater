@@ -193,16 +193,53 @@ object DatabaseService {
                             WHERE country != ''
                             GROUP BY day, country
                         ),
+                        all_days AS (
+                            SELECT
+                                day,
+                                lagInFrame(day) OVER (
+                                    ORDER BY day ROWS BETWEEN 1 PRECEDING AND CURRENT ROW
+                                ) AS prev_any
+                            FROM (SELECT DISTINCT day FROM data)
+                        ),
+                        marked AS (
+                            SELECT
+                                d.country AS country,
+                                d.day AS day,
+                                lagInFrame(d.day) OVER (
+                                    PARTITION BY d.country ORDER BY d.day
+                                    ROWS BETWEEN 1 PRECEDING AND CURRENT ROW
+                                ) AS prev_same,
+                                a.prev_any AS prev_any
+                            FROM data AS d
+                            INNER JOIN all_days AS a ON d.day = a.day
+                        ),
                         with_sessions AS (
                             SELECT
-                                *,
-                                -- Island by calendar adjacency: a run of consecutive
-                                -- same-country days shares one anchor date, and any gap
-                                -- > 1 day starts a new session. This prevents merging
-                                -- non-contiguous visits (e.g. separate Egypt trips in
-                                -- 2011/2012/2014 with nothing logged in between).
-                                day - toIntervalDay(row_number() OVER (PARTITION BY country ORDER BY day)) AS session_id
-                            FROM data
+                                country,
+                                day,
+                                -- A "session" is one continuous physical stay. A new
+                                -- session starts only on a real departure:
+                                --   * first day logged for the country, or
+                                --   * another country was logged in the gap (the previous
+                                --     logged day of ANY country is later than the previous
+                                --     same-country day), or
+                                --   * a long gap with nothing logged at all (> 30 days) —
+                                --     a genuine absence, e.g. sparse historical revisits
+                                --     like the separate Egypt trips in 2011/2012/2014.
+                                -- A 1-2 day logging gap within a stay is NOT a break, so
+                                -- continuous stays no longer fragment into tiny sessions.
+                                sum(
+                                    if(
+                                        prev_same = toDate(0)
+                                        OR prev_any > prev_same
+                                        OR dateDiff('day', prev_same, day) > 30,
+                                        1, 0
+                                    )
+                                ) OVER (
+                                    PARTITION BY country ORDER BY day
+                                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+                                ) AS session_id
+                            FROM marked
                         )
                     SELECT
                         country,
@@ -236,16 +273,47 @@ object DatabaseService {
                             WHERE country != ''
                             GROUP BY day, country
                         ),
+                        all_days AS (
+                            SELECT
+                                day,
+                                lagInFrame(day) OVER (
+                                    ORDER BY day ROWS BETWEEN 1 PRECEDING AND CURRENT ROW
+                                ) AS prev_any
+                            FROM (SELECT DISTINCT day FROM data)
+                        ),
+                        marked AS (
+                            SELECT
+                                d.country AS country,
+                                d.day AS day,
+                                lagInFrame(d.day) OVER (
+                                    PARTITION BY d.country ORDER BY d.day
+                                    ROWS BETWEEN 1 PRECEDING AND CURRENT ROW
+                                ) AS prev_same,
+                                a.prev_any AS prev_any
+                            FROM data AS d
+                            INNER JOIN all_days AS a ON d.day = a.day
+                        ),
                         with_sessions AS (
                             SELECT
-                                *,
-                                -- Island by calendar adjacency (see getCountrySessions):
-                                -- consecutive same-country days share an anchor date; any
-                                -- gap > 1 day starts a new session, so the "current"
-                                -- session is only the latest unbroken run, not a span
-                                -- merged across earlier visits.
-                                day - toIntervalDay(row_number() OVER (PARTITION BY country ORDER BY day)) AS session_id
-                            FROM data
+                                country,
+                                day,
+                                -- Same session rule as getCountrySessions: a new session
+                                -- starts only on a real departure (another country logged
+                                -- in the gap, or a > 30-day gap with nothing logged), not
+                                -- on a 1-2 day logging gap. So the "current" session is the
+                                -- latest continuous stay, not fragmented by missing days.
+                                sum(
+                                    if(
+                                        prev_same = toDate(0)
+                                        OR prev_any > prev_same
+                                        OR dateDiff('day', prev_same, day) > 30,
+                                        1, 0
+                                    )
+                                ) OVER (
+                                    PARTITION BY country ORDER BY day
+                                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+                                ) AS session_id
+                            FROM marked
                         ),
                         sessions_grouped AS (
                             SELECT
