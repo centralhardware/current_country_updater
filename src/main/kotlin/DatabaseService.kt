@@ -196,8 +196,12 @@ object DatabaseService {
                         with_sessions AS (
                             SELECT
                                 *,
-                                dense_rank() OVER (ORDER BY day) -
-                                dense_rank() OVER (PARTITION BY country ORDER BY day) AS session_id
+                                -- Island by calendar adjacency: a run of consecutive
+                                -- same-country days shares one anchor date, and any gap
+                                -- > 1 day starts a new session. This prevents merging
+                                -- non-contiguous visits (e.g. separate Egypt trips in
+                                -- 2011/2012/2014 with nothing logged in between).
+                                day - toIntervalDay(row_number() OVER (PARTITION BY country ORDER BY day)) AS session_id
                             FROM data
                         )
                     SELECT
@@ -235,8 +239,12 @@ object DatabaseService {
                         with_sessions AS (
                             SELECT
                                 *,
-                                row_number() OVER (ORDER BY day) -
-                                row_number() OVER (PARTITION BY country ORDER BY day) AS session_id
+                                -- Island by calendar adjacency (see getCountrySessions):
+                                -- consecutive same-country days share an anchor date; any
+                                -- gap > 1 day starts a new session, so the "current"
+                                -- session is only the latest unbroken run, not a span
+                                -- merged across earlier visits.
+                                day - toIntervalDay(row_number() OVER (PARTITION BY country ORDER BY day)) AS session_id
                             FROM data
                         ),
                         sessions_grouped AS (
