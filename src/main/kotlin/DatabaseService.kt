@@ -186,55 +186,33 @@ object DatabaseService {
                 """
                     WITH
                         data AS (
-                            SELECT
+                            SELECT DISTINCT
                                 toDate(date_time) AS day,
                                 country
                             FROM country_days_tracker_bot.country_days_tracker
                             WHERE country != ''
-                            GROUP BY day, country
-                        ),
-                        all_days AS (
-                            SELECT
-                                day,
-                                lagInFrame(day) OVER (
-                                    ORDER BY day ROWS BETWEEN 1 PRECEDING AND CURRENT ROW
-                                ) AS prev_any
-                            FROM (SELECT DISTINCT day FROM data)
                         ),
                         marked AS (
                             SELECT
-                                d.country AS country,
-                                d.day AS day,
-                                lagInFrame(d.day) OVER (
-                                    PARTITION BY d.country ORDER BY d.day
+                                country,
+                                day,
+                                lagInFrame(day) OVER (
+                                    PARTITION BY country ORDER BY day
                                     ROWS BETWEEN 1 PRECEDING AND CURRENT ROW
-                                ) AS prev_same,
-                                a.prev_any AS prev_any
-                            FROM data AS d
-                            INNER JOIN all_days AS a ON d.day = a.day
+                                ) AS prev_same
+                            FROM data
                         ),
                         with_sessions AS (
                             SELECT
                                 country,
                                 day,
-                                -- A "session" is one continuous physical stay. A new
-                                -- session starts only on a real departure:
-                                --   * first day logged for the country, or
-                                --   * another country was logged in the gap (the previous
-                                --     logged day of ANY country is later than the previous
-                                --     same-country day), or
-                                --   * a long gap with nothing logged at all (> 30 days) —
-                                --     a genuine absence, e.g. sparse historical revisits
-                                --     like the separate Egypt trips in 2011/2012/2014.
-                                -- A 1-2 day logging gap within a stay is NOT a break, so
-                                -- continuous stays no longer fragment into tiny sessions.
+                                -- A calendar event covers only strictly-logged days, so
+                                -- its span equals the number of logged days — matching the
+                                -- /stat count (getCountryStats). Any day without a log for
+                                -- the country breaks the run: a new session starts unless
+                                -- the previous logged day is exactly the day before.
                                 sum(
-                                    if(
-                                        prev_same = toDate(0)
-                                        OR prev_any > prev_same
-                                        OR dateDiff('day', prev_same, day) > 30,
-                                        1, 0
-                                    )
+                                    if(dateDiff('day', prev_same, day) = 1, 0, 1)
                                 ) OVER (
                                     PARTITION BY country ORDER BY day
                                     ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
