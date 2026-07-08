@@ -1,6 +1,7 @@
 import ChannelManager.registerHashtagHandler
 import ChannelManager.updateChannelTitle
 import commands.registerMapCommand
+import commands.registerOverrideCommands
 import commands.registerStatCommand
 import commands.registerTagCommands
 import dev.inmo.krontab.doInfinity
@@ -29,13 +30,17 @@ suspend fun main() {
             BotCommand("addtag", "add temporary tag"),
             BotCommand("removetag", "remove temporary tag"),
             BotCommand("tags", "list active tags"),
-            BotCommand("cleartags", "remove all tags")
+            BotCommand("cleartags", "remove all tags"),
+            BotCommand("addoverride", "add locality override (from -> to)"),
+            BotCommand("removeoverride", "remove locality override"),
+            BotCommand("overrides", "list locality overrides")
         )
 
         registerHashtagHandler(Config.CHANNEL_ID)
         registerStatCommand()
         registerMapCommand()
         registerTagCommands()
+        registerOverrideCommands()
     }.second.join()
 
 }
