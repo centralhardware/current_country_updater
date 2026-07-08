@@ -111,7 +111,7 @@ object WebService {
                     body.acc,
                     body.vac,
                     body.conn,
-                    body.locality,
+                    LocalityOverrideManager.resolve(body.locality),
                     body.ghash,
                     body.p,
                     body.addr,
