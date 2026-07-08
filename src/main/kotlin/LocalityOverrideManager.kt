@@ -12,7 +12,7 @@ object LocalityOverrideManager {
                     VALUES (?, ?)
                     ON CONFLICT (from_locality) DO UPDATE SET to_locality = EXCLUDED.to_locality
                     """.trimIndent(),
-                    from,
+                    normalize(from),
                     to
                 )
             )
@@ -22,7 +22,7 @@ object LocalityOverrideManager {
     fun removeOverride(from: String): Boolean {
         return sessionOf(PostgresService.dataSource).use { session ->
             session.update(
-                queryOf("DELETE FROM locality_overrides WHERE from_locality = ?", from)
+                queryOf("DELETE FROM locality_overrides WHERE from_locality = ?", normalize(from))
             ) > 0
         }
     }
@@ -40,14 +40,21 @@ object LocalityOverrideManager {
     /**
      * Returns the override target if geocoding produced a [locality] that matches a
      * configured `from` value, otherwise returns [locality] unchanged.
+     *
+     * Matching is done on the sanitized (hashtag) form so that the value the user sees
+     * in the channel (e.g. `#Chiang_Mai_City_Municipality`) matches the raw geocoded
+     * locality (`Chiang Mai City Municipality`), regardless of spaces vs underscores.
      */
     fun resolve(locality: String): String {
         return sessionOf(PostgresService.dataSource).use { session ->
             session.run(
-                queryOf("SELECT to_locality FROM locality_overrides WHERE from_locality = ?", locality)
+                queryOf("SELECT to_locality FROM locality_overrides WHERE from_locality = ?", normalize(locality))
                     .map { it.string("to_locality") }
                     .asSingle
             )
         } ?: locality
     }
+
+    private fun normalize(locality: String) =
+        TagManager.sanitizeForHashtag(locality.removePrefix("#"))
 }
