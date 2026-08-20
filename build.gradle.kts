@@ -25,7 +25,7 @@ dependencies {
     implementation("org.postgresql:postgresql:42.7.13")
     implementation("com.zaxxer:HikariCP:7.1.0")
 
-    implementation("dev.inmo:krontab:2.9.0")
+    implementation("dev.inmo:krontab:2.10.0")
 
     implementation("com.neovisionaries:nv-i18n:1.29")
 
