@@ -13,7 +13,7 @@ repositories {
 }
 
 val ktorVersion = "3.5.2"
-val clickhouseVersion = "0.9.8"
+val clickhouseVersion = "0.10.0"
 
 dependencies {
     implementation("com.github.centralhardware:ktgbotapi-commons:5100234f")
