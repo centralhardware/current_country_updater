@@ -16,7 +16,7 @@ val ktorVersion = "3.5.2"
 val clickhouseVersion = "0.10.0"
 
 dependencies {
-    implementation("com.github.centralhardware:ktgbotapi-commons:5100234f")
+    implementation("com.github.centralhardware:ktgbotapi-commons:07ee206f")
 
     implementation("com.clickhouse:clickhouse-jdbc:$clickhouseVersion")
     implementation("com.clickhouse:clickhouse-http-client:$clickhouseVersion")
@@ -61,6 +61,8 @@ jib {
     }
     container {
         mainClass = "MainKt"
+        // /health, served by ktgbotapi-commons
+        ports = listOf("8081")
         jvmFlags = listOf("-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=75.0")
         creationTime = "USE_CURRENT_TIMESTAMP"
         labels = mapOf(

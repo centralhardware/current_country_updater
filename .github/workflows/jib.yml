@@ -57,20 +57,29 @@ jobs:
 
           (IFS=,; echo "tags=${TAGS[*]}") >> "$GITHUB_OUTPUT"
 
-      - name: Build and push image with Jib
+      - name: Build image with Jib into the local Docker daemon
         if: github.event_name != 'pull_request'
-        env:
-          JIB_TO_IMAGE: ${{ steps.meta.outputs.image }}
-          JIB_TO_TAGS:  ${{ steps.meta.outputs.tags }}
-          JIB_TO_AUTH_USERNAME: ${{ github.actor }}
-          JIB_TO_AUTH_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ./gradlew --no-daemon \
-            -Djib.to.image="$JIB_TO_IMAGE" \
-            -Djib.to.tags="$JIB_TO_TAGS" \
-            -Djib.to.auth.username="$JIB_TO_AUTH_USERNAME" \
-            -Djib.to.auth.password="$JIB_TO_AUTH_PASSWORD" \
-            jib
+            -Djib.to.image="localhost/jib-build:latest" \
+            jibDockerBuild
+
+      - name: Add HEALTHCHECK layer and push
+        if: github.event_name != 'pull_request'
+        env:
+          IMAGE: ${{ steps.meta.outputs.image }}
+          TAGS:  ${{ steps.meta.outputs.tags }}
+          REGISTRY_USERNAME: ${{ github.actor }}
+          REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          echo "$REGISTRY_PASSWORD" | docker login ghcr.io -u "$REGISTRY_USERNAME" --password-stdin
+          IFS=',' read -ra TAG_LIST <<< "$TAGS"
+          TAG_ARGS=()
+          for tag in "${TAG_LIST[@]}"; do TAG_ARGS+=(-t "$IMAGE:$tag"); done
+          # Jib cannot emit a HEALTHCHECK instruction, so it is added on top of the Jib image.
+          docker build --build-arg BASE_IMAGE=localhost/jib-build:latest "${TAG_ARGS[@]}" - < Dockerfile
+          for tag in "${TAG_LIST[@]}"; do docker push "$IMAGE:$tag"; done
 
       - name: Trigger Coolify deployment
         if: github.event_name != 'pull_request'
