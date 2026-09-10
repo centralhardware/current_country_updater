@@ -16,7 +16,7 @@ val ktorVersion = "3.5.2"
 val clickhouseVersion = "0.10.0"
 
 dependencies {
-    implementation("com.github.centralhardware:ktgbotapi-commons:e9eab760")
+    implementation("com.github.centralhardware:ktgbotapi-commons:3f5a8ba0")
 
     implementation("com.clickhouse:clickhouse-jdbc:$clickhouseVersion")
     implementation("com.clickhouse:clickhouse-http-client:$clickhouseVersion")
