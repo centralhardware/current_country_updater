@@ -77,6 +77,15 @@
 -- three statistics queries can be diffed against it afterwards. Drop it by
 -- hand once they match.
 --
+-- ONE TYPE CHANGE
+--
+-- `bs` was `LowCardinality(UInt8)` and is now plain `UInt8`. ClickHouse 26
+-- refuses to create the former at all (Code 455, SUSPICIOUS_TYPE_FOR_LOW_
+-- CARDINALITY) and it is right to: a dictionary plus an index is strictly more
+-- work and more bytes than the single byte it wraps. The old table predates
+-- that check. The values are unchanged -- `bs` is 0-3 -- and nothing reads the
+-- column's type, only its value.
+--
 -- CODECS
 --
 -- Carried over from V12, which measured them on this data: Delta + ZSTD(9) on
@@ -104,7 +113,7 @@ CREATE TABLE IF NOT EXISTS country_days_tracker_bot.country_days_tracker_utc
     `addr` LowCardinality(String),
     `bssid` LowCardinality(String),
     `ssid` LowCardinality(String),
-    `bs` LowCardinality(UInt8) DEFAULT 0,
+    `bs` UInt8 DEFAULT 0 CODEC(ZSTD(9)),
     `vel` UInt16 DEFAULT 0 CODEC(Delta(2), ZSTD(9)),
     `cog` UInt16 DEFAULT 0 CODEC(Delta(2), ZSTD(9)),
     `m` Int8 DEFAULT 0
