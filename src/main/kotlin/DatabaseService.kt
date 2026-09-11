@@ -3,8 +3,7 @@ import kotliquery.queryOf
 import kotliquery.sessionOf
 import org.flywaydb.core.Flyway
 import java.sql.SQLException
-import java.time.LocalDateTime
-import java.time.ZoneId
+import java.time.Instant
 import java.util.Properties
 import javax.sql.DataSource
 
@@ -33,11 +32,22 @@ object DatabaseService {
         }
     }
 
+    /**
+     * The table stores the instant and the offset it was recorded at; local
+     * wall time is the ALIAS column `date_time` = `ts + tz_offset`, which is
+     * what the country statistics below still count the days of. Both values
+     * come straight from the OwnTracks payload, so neither is reconstructed.
+     *
+     * `tzOffset` is seconds east of UTC *at that instant*, not the zone's
+     * standard offset -- a zone on summer time is a different offset under the
+     * same name, and a row has to carry the one that was actually in force.
+     */
     fun save(
-        dateTime: LocalDateTime,
+        ts: Instant,
+        tzOffset: Int,
         latitude: Float,
         longitude: Float,
-        ts: ZoneId,
+        tzname: String,
         country: String,
         alt: Int,
         batt: Int,
@@ -59,7 +69,8 @@ object DatabaseService {
                     // language=SQL
                     """
                         INSERT INTO country_days_tracker_bot.country_days_tracker (
-                            date_time,
+                            ts,
+                            tz_offset,
                             latitude,
                             longitude,
                             country,
@@ -81,7 +92,8 @@ object DatabaseService {
                             bs
                         )
                         SELECT
-                            toDateTime(?) AS date_time,
+                            toDateTime(toInt64(?), 'UTC') AS ts,
+                            toInt32(?) AS tz_offset,
                             toFloat32(?) AS latitude,
                             toFloat32(?) AS longitude,
                             toString(?) AS country,
@@ -102,11 +114,12 @@ object DatabaseService {
                             toInt8(?) AS m,
                             toUInt8(?) AS bs
                     """.trimIndent(),
-                    dateTime,
+                    ts.epochSecond,
+                    tzOffset,
                     latitude,
                     longitude,
                     country,
-                    ts.id,
+                    tzname,
                     alt,
                     batt,
                     acc,
