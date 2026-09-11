@@ -19,12 +19,22 @@ object DatabaseService {
             }
             val ds = DataSourceImpl(Config.CLICKHOUSE_URL, props)
 
-            Flyway.configure()
+            val flyway = Flyway.configure()
                 .dataSource(ds)
                 .locations("classpath:db/migration", "filesystem:/app/resources/db/migration")
                 .baselineOnMigrate(true)
                 .load()
-                .migrate()
+
+            // ClickHouse has no transactional DDL, so a migration that fails
+            // half way leaves a `success = 0` row in flyway_schema_history that
+            // blocks every later deploy until someone deletes it by hand -- with
+            // the bot refusing to start, and dropping pings, the whole time.
+            // repair() clears those rows. It also realigns the checksums of
+            // already-applied migrations, so an edit to a migration that has
+            // run will be adopted silently rather than reported: don't edit
+            // them, add a new one.
+            flyway.repair()
+            flyway.migrate()
 
             ds
         } catch (e: SQLException) {
