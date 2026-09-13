@@ -16,6 +16,18 @@ object DatabaseService {
             val props = Properties().apply {
                 Config.CLICKHOUSE_USER?.let { put("user", it) }
                 Config.CLICKHOUSE_PASSWORD?.let { put("password", it) }
+                // Batching is the server's job. A ping is one row, and one row
+                // per INSERT is one part per ping -- a few thousand parts a day
+                // for a table that needs a handful. With async_insert the server
+                // collects the pings in its own buffer and writes one part per
+                // flush instead.
+                //
+                // wait_for_async_insert keeps the call synchronous: it returns
+                // once the row is really in the table, so a failed insert is
+                // still an exception here rather than a ping lost in a buffer
+                // nobody is watching, and getLastLocation right after a save
+                // sees the ping it just wrote.
+                put("custom_settings", "async_insert=1,wait_for_async_insert=1")
             }
             val ds = DataSourceImpl(Config.CLICKHOUSE_URL, props)
 
@@ -74,6 +86,9 @@ object DatabaseService {
         bs: Int
     ) {
         sessionOf(dataSource).use { session ->
+            // VALUES rather than SELECT on purpose: ClickHouse only batches
+            // inserts that carry their data in the request, and ignores
+            // async_insert for an INSERT ... SELECT.
             session.execute(
                 queryOf(
                     // language=SQL
@@ -101,28 +116,29 @@ object DatabaseService {
                             m,
                             bs
                         )
-                        SELECT
-                            toDateTime(toInt64(?), 'UTC') AS ts,
-                            toInt32(?) AS tz_offset,
-                            toFloat32(?) AS latitude,
-                            toFloat32(?) AS longitude,
-                            toString(?) AS country,
-                            toString(?) AS tzname,
-                            toUInt16(?) AS alt,
-                            toUInt8(?) AS batt,
-                            toUInt8(?) AS acc,
-                            toUInt8(?) AS vac,
-                            toString(?) AS conn,
-                            toString(?) AS locality,
-                            toString(?) AS ghash,
-                            toFloat64(?) AS p,
-                            toString(?) AS addr,
-                            '' AS bssid,
-                            '' AS ssid,
-                            toUInt16(?) AS vel,
-                            toUInt16(?) AS cog,
-                            toInt8(?) AS m,
-                            toUInt8(?) AS bs
+                        VALUES (
+                            toDateTime(toInt64(?), 'UTC'),
+                            toInt32(?),
+                            toFloat32(?),
+                            toFloat32(?),
+                            toString(?),
+                            toString(?),
+                            toUInt16(?),
+                            toUInt8(?),
+                            toUInt8(?),
+                            toUInt8(?),
+                            toString(?),
+                            toString(?),
+                            toString(?),
+                            toFloat64(?),
+                            toString(?),
+                            '',
+                            '',
+                            toUInt16(?),
+                            toUInt16(?),
+                            toInt8(?),
+                            toUInt8(?)
+                        )
                     """.trimIndent(),
                     ts.epochSecond,
                     tzOffset,
