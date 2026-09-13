@@ -101,19 +101,33 @@ ENGINE = Buffer(
     10000, 10000000
 );
 
--- 3. Move the history across. ~1M rows in a single part; `date_time` is an
---    alias and is not copied -- it is recomputed from ts + tz_offset on the
---    other side, which is why the column list can be a plain SELECT *.
-INSERT INTO country_days_tracker_bot.country_days_tracker_data
-SELECT * FROM country_days_tracker_bot.country_days_tracker;
-
--- 4. The swap, in one atomic statement. After this `country_days_tracker` is
---    the Buffer -- the name every reader already queries and the bot already
---    inserts into -- and `country_days_tracker_buffer` is the old MergeTree,
---    which nothing points at any more.
+-- 3. The swap, in one atomic statement, and BEFORE the history is copied.
+--
+--    The order matters and is not the obvious one. Copying first and swapping
+--    second leaves a gap: the bot keeps logging throughout, and a ping that
+--    lands in the old table between the copy and the swap belongs to neither
+--    side -- it is not in the copy, and the table holding it is about to be
+--    dropped. There is no transaction to close that window. Swapping first
+--    closes it instead: after this statement the old MergeTree is named
+--    `country_days_tracker_buffer`, nothing writes to it any more, and its
+--    contents are final. Then the copy cannot miss a row and cannot duplicate
+--    one either.
+--
+--    The cost of this order is the other way round: between this statement and
+--    step 4, `country_days_tracker` is a Buffer over an empty table, so a
+--    reader sees only the pings of the last few seconds. That lasts as long as
+--    a ~1M-row single-part copy takes -- a second or two of a thin dashboard,
+--    against a permanently lost ping the other way.
 EXCHANGE TABLES country_days_tracker_bot.country_days_tracker
             AND country_days_tracker_bot.country_days_tracker_buffer;
 
--- 5. Drop it. Its rows were copied in step 3, and from here on the Buffer
---    writes into country_days_tracker_data.
+-- 4. Move the history across, out of the old table which no longer receives
+--    anything. `date_time` is an alias and is not copied -- it is recomputed
+--    from ts + tz_offset on the other side, which is why this can be a plain
+--    SELECT *.
+INSERT INTO country_days_tracker_bot.country_days_tracker_data
+SELECT * FROM country_days_tracker_bot.country_days_tracker_buffer;
+
+-- 5. Drop it. Every row it held is in country_days_tracker_data, and from here
+--    on the Buffer writes there.
 DROP TABLE IF EXISTS country_days_tracker_bot.country_days_tracker_buffer;
