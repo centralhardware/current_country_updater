@@ -109,21 +109,19 @@ fun BehaviourContext.registerMapCommand() {
         val lat = lastLocation.latitude.toDouble()
         val lon = lastLocation.longitude.toDouble()
         val answer = runCatching {
-            execute(
-                AnswerGuestQueryRaw(
-                    message.guestQueryId,
-                    InlineQueryResultLocation(
-                        id = InlineQueryId(message.guestQueryId.string),
-                        latitude = lat,
-                        longitude = lon,
-                        title = "Current location",
-                        livePeriod = LIVE_PERIOD.inWholeSeconds.toInt(),
-                    ),
-                )
+            answerGuestQueryOnce(
+                message.guestQueryId,
+                InlineQueryResultLocation(
+                    id = InlineQueryId(message.guestQueryId.string),
+                    latitude = lat,
+                    longitude = lon,
+                    title = "Current location",
+                    livePeriod = LIVE_PERIOD.inWholeSeconds.toInt(),
+                ),
             )
         }.onFailure { KSLog.warning("answerGuestQuery failed", it) }.getOrNull()
         KSLog.info("answerGuestQuery response: $answer")
-        val inlineMessageId = (answer as? JsonObject)?.get("inline_message_id")?.jsonPrimitive?.contentOrNull
+        val inlineMessageId = (answer?.get("result") as? JsonObject)?.get("inline_message_id")?.jsonPrimitive?.contentOrNull
             ?.let(::InlineMessageId)
             ?: return@onGuestRequestMessage
         val until = System.currentTimeMillis() + LIVE_PERIOD.inWholeMilliseconds
