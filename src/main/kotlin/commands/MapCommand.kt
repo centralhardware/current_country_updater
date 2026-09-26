@@ -1,6 +1,12 @@
 package commands
 
 import Config
+import dev.inmo.kslog.common.KSLog
+import dev.inmo.kslog.common.info
+import dev.inmo.kslog.common.warning
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import DatabaseService
 import WebService
 import dev.inmo.tgbotapi.extensions.api.EditLiveLocationInfo
@@ -102,16 +108,24 @@ fun BehaviourContext.registerMapCommand() {
         }
         val lat = lastLocation.latitude.toDouble()
         val lon = lastLocation.longitude.toDouble()
-        val sent = reply(
-            message,
-            InlineQueryResultLocation(
-                id = InlineQueryId(message.guestQueryId.string),
-                latitude = lat,
-                longitude = lon,
-                title = "Current location",
-                livePeriod = LIVE_PERIOD.inWholeSeconds.toInt(),
-            ),
-        )
+        val answer = runCatching {
+            execute(
+                AnswerGuestQueryRaw(
+                    message.guestQueryId,
+                    InlineQueryResultLocation(
+                        id = InlineQueryId(message.guestQueryId.string),
+                        latitude = lat,
+                        longitude = lon,
+                        title = "Current location",
+                        livePeriod = LIVE_PERIOD.inWholeSeconds.toInt(),
+                    ),
+                )
+            )
+        }.onFailure { KSLog.warning("answerGuestQuery failed", it) }.getOrNull()
+        KSLog.info("answerGuestQuery response: $answer")
+        val inlineMessageId = (answer as? JsonObject)?.get("inline_message_id")?.jsonPrimitive?.contentOrNull
+            ?.let(::InlineMessageId)
+            ?: return@onGuestRequestMessage
         val until = System.currentTimeMillis() + LIVE_PERIOD.inWholeMilliseconds
         val job = this@registerMapCommand.launch {
             WebService.pings
@@ -119,7 +133,7 @@ fun BehaviourContext.registerMapCommand() {
                 .collect { ping ->
                     runCatching {
                         editLiveLocation(
-                            sent.inlineMessageId,
+                            inlineMessageId,
                             ping.latitude.toDouble(),
                             ping.longitude.toDouble(),
                             ping.acc.takeIf { it in 1..1500 }?.toFloat(),
@@ -128,7 +142,7 @@ fun BehaviourContext.registerMapCommand() {
                     }
                 }
         }
-        val entry = job to sent.inlineMessageId
+        val entry = job to inlineMessageId
         guestJobs[guestChat] = entry
         job.invokeOnCompletion { guestJobs.remove(guestChat, entry) }
     }
