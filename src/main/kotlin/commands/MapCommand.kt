@@ -100,6 +100,7 @@ fun BehaviourContext.registerMapCommand() {
             (from == Config.MAP_GUEST_ID && message.chat.id.chatId.long == Config.MAP_OWNER_ID)
         allowed && message.text?.contains("/map") == true
     }) { message ->
+        KSLog.info("guest /map from ${message.from.id.chatId.long} in chat ${message.chat.id.chatId.long}, query ${message.guestQueryId.string}")
         val lastLocation = DatabaseService.getLastLocation() ?: return@onGuestRequestMessage
         val guestChat = message.chat.id.chatId.long
         guestJobs.remove(guestChat)?.let { (job, inlineMessageId) ->
@@ -120,7 +121,6 @@ fun BehaviourContext.registerMapCommand() {
                 ),
             )
         }.onFailure { KSLog.warning("answerGuestQuery failed", it) }.getOrNull()
-        KSLog.info("answerGuestQuery response: $answer")
         val inlineMessageId = (answer?.get("result") as? JsonObject)?.get("inline_message_id")?.jsonPrimitive?.contentOrNull
             ?.let(::InlineMessageId)
             ?: return@onGuestRequestMessage
