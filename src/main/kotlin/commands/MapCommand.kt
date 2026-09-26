@@ -1,12 +1,6 @@
 package commands
 
 import Config
-import dev.inmo.kslog.common.KSLog
-import dev.inmo.kslog.common.info
-import dev.inmo.kslog.common.warning
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonPrimitive
 import DatabaseService
 import WebService
 import dev.inmo.tgbotapi.extensions.api.EditLiveLocationInfo
@@ -100,7 +94,6 @@ fun BehaviourContext.registerMapCommand() {
             (from == Config.MAP_GUEST_ID && message.chat.id.chatId.long == Config.MAP_OWNER_ID)
         allowed && message.text?.contains("/map") == true
     }) { message ->
-        KSLog.info("guest /map from ${message.from.id.chatId.long} in chat ${message.chat.id.chatId.long}, query ${message.guestQueryId.string}")
         val lastLocation = DatabaseService.getLastLocation() ?: return@onGuestRequestMessage
         val guestChat = message.chat.id.chatId.long
         guestJobs.remove(guestChat)?.let { (job, inlineMessageId) ->
@@ -109,21 +102,16 @@ fun BehaviourContext.registerMapCommand() {
         }
         val lat = lastLocation.latitude.toDouble()
         val lon = lastLocation.longitude.toDouble()
-        val answer = runCatching {
-            answerGuestQueryOnce(
-                message.guestQueryId,
-                InlineQueryResultLocation(
-                    id = InlineQueryId(message.guestQueryId.string),
-                    latitude = lat,
-                    longitude = lon,
-                    title = "Current location",
-                    livePeriod = LIVE_PERIOD.inWholeSeconds.toInt(),
-                ),
-            )
-        }.onFailure { KSLog.warning("answerGuestQuery failed", it) }.getOrNull()
-        val inlineMessageId = (answer?.get("result") as? JsonObject)?.get("inline_message_id")?.jsonPrimitive?.contentOrNull
-            ?.let(::InlineMessageId)
-            ?: return@onGuestRequestMessage
+        val sent = reply(
+            message,
+            InlineQueryResultLocation(
+                id = InlineQueryId(message.guestQueryId.string),
+                latitude = lat,
+                longitude = lon,
+                title = "Current location",
+                livePeriod = LIVE_PERIOD.inWholeSeconds.toInt(),
+            ),
+        )
         val until = System.currentTimeMillis() + LIVE_PERIOD.inWholeMilliseconds
         val job = this@registerMapCommand.launch {
             WebService.pings
@@ -131,7 +119,7 @@ fun BehaviourContext.registerMapCommand() {
                 .collect { ping ->
                     runCatching {
                         editLiveLocation(
-                            inlineMessageId,
+                            sent.inlineMessageId,
                             ping.latitude.toDouble(),
                             ping.longitude.toDouble(),
                             ping.acc.takeIf { it in 1..1500 }?.toFloat(),
@@ -140,7 +128,7 @@ fun BehaviourContext.registerMapCommand() {
                     }
                 }
         }
-        val entry = job to inlineMessageId
+        val entry = job to sent.inlineMessageId
         guestJobs[guestChat] = entry
         job.invokeOnCompletion { guestJobs.remove(guestChat, entry) }
     }
