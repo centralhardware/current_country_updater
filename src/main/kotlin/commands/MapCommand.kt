@@ -76,7 +76,7 @@ fun BehaviourContext.registerMapCommand() {
 
         val locations = liveLocations(lastLocation.latitude.toDouble(), lastLocation.longitude.toDouble())
 
-        val job = launch {
+        val job = this@registerMapCommand.launch {
             handleLiveLocation(
                 chatId,
                 locations,
@@ -113,7 +113,7 @@ fun BehaviourContext.registerMapCommand() {
             ),
         )
         val until = System.currentTimeMillis() + LIVE_PERIOD.inWholeMilliseconds
-        val job = launch {
+        val job = this@registerMapCommand.launch {
             WebService.pings
                 .takeWhile { System.currentTimeMillis() < until }
                 .collect { ping ->
