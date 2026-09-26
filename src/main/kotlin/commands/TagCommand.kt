@@ -9,7 +9,7 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 
 fun BehaviourContext.registerTagCommands() {
-    onCommandWithArgs("addtag") { message, args ->
+    onCommandWithArgs("addtag", initialFilter = fromOwner) { message, args ->
         if (args.isEmpty()) {
             reply(message, "Usage: /addtag <tag> [duration]\nDuration examples: 1h, 2d, 30m")
             return@onCommandWithArgs
@@ -25,7 +25,7 @@ fun BehaviourContext.registerTagCommands() {
         reply(message, "Tag ${TagManager.getActiveTags().last { it.contains(TagManager.sanitizeForHashtag(tagName.removePrefix("#"))) }} added$expiryText")
     }
 
-    onCommandWithArgs("removetag") { message, args ->
+    onCommandWithArgs("removetag", initialFilter = fromOwner) { message, args ->
         val tagName = args.firstOrNull()
         if (tagName == null) {
             reply(message, "Usage: /removetag <tag>")
@@ -39,7 +39,7 @@ fun BehaviourContext.registerTagCommands() {
         }
     }
 
-    onCommand("tags") { message ->
+    onCommand("tags", initialFilter = fromOwner) { message ->
         val tags = TagManager.getActiveTags()
         if (tags.isEmpty()) {
             reply(message, "No active tags")
@@ -48,7 +48,7 @@ fun BehaviourContext.registerTagCommands() {
         }
     }
 
-    onCommand("cleartags") { message ->
+    onCommand("cleartags", initialFilter = fromOwner) { message ->
         TagManager.clear()
         reply(message, "All tags cleared")
     }

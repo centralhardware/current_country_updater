@@ -15,7 +15,6 @@ import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onGuestR
 import dev.inmo.tgbotapi.extensions.utils.extensions.raw.text
 import dev.inmo.tgbotapi.types.InlineQueries.InlineQueryResult.InlineQueryResultLocation
 import dev.inmo.tgbotapi.types.InlineQueryId
-import dev.inmo.tgbotapi.types.message.abstracts.FromUserMessage
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.map
@@ -57,7 +56,7 @@ private fun liveLocations(lat: Double, lon: Double): Flow<EditLiveLocationInfo> 
  * incoming ping for [LIVE_PERIOD] instead of a one-off static pin.
  */
 fun BehaviourContext.registerMapCommand() {
-    onCommand("map", initialFilter = { (it as? FromUserMessage)?.from?.id?.chatId?.long == Config.MAP_OWNER_ID }) { message ->
+    onCommand("map", initialFilter = fromOwner) { message ->
         val lastLocation = DatabaseService.getLastLocation()
         if (lastLocation == null) {
             reply(message, "No location data available")
