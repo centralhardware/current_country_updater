@@ -9,7 +9,7 @@ import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onComman
 import formatCountryStats
 
 fun BehaviourContext.registerStatCommand() {
-    onCommand("stat") { message ->
+    onCommand("stat", initialFilter = fromOwner) { message ->
         val stats = DatabaseService.getCountryStats()
         val currentCountry = DatabaseService.getCurrentCountryLength()
         val msg = formatCountryStats(stats, currentCountry)

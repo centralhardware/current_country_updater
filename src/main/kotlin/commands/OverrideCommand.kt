@@ -9,7 +9,7 @@ import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onComman
 private const val SEPARATOR = "->"
 
 fun BehaviourContext.registerOverrideCommands() {
-    onCommandWithArgs("addoverride") { message, args ->
+    onCommandWithArgs("addoverride", initialFilter = fromOwner) { message, args ->
         val parts = args.joinToString(" ").split(SEPARATOR).map { it.trim() }
         if (parts.size != 2 || parts[0].isEmpty() || parts[1].isEmpty()) {
             reply(
@@ -24,7 +24,7 @@ fun BehaviourContext.registerOverrideCommands() {
         reply(message, "Override added: ${parts[0]} → ${parts[1]}")
     }
 
-    onCommandWithArgs("removeoverride") { message, args ->
+    onCommandWithArgs("removeoverride", initialFilter = fromOwner) { message, args ->
         val from = args.joinToString(" ").trim()
         if (from.isEmpty()) {
             reply(message, "Usage: /removeoverride <from>")
@@ -38,7 +38,7 @@ fun BehaviourContext.registerOverrideCommands() {
         }
     }
 
-    onCommand("overrides") { message ->
+    onCommand("overrides", initialFilter = fromOwner) { message ->
         val overrides = LocalityOverrideManager.getOverrides()
         if (overrides.isEmpty()) {
             reply(message, "No locality overrides")
