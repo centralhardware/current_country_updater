@@ -26,7 +26,7 @@ suspend fun main() {
 
         setMyCommands(
             BotCommand("stat", "show statistics"),
-            BotCommand("map", "show last location on map"),
+            BotCommand("map", "share live location"),
             BotCommand("addtag", "add temporary tag"),
             BotCommand("removetag", "remove temporary tag"),
             BotCommand("tags", "list active tags"),

@@ -58,6 +58,11 @@ private val json = Json { ignoreUnknownKeys = true }
 
 object WebService {
 
+    private val _pings = MutableSharedFlow<LocationRequest>(extraBufferCapacity = 16)
+
+    /** Every accepted ping, as it arrives -- feeds the /map live location. */
+    val pings = _pings.asSharedFlow()
+
     fun start(port: Int = 80): EmbeddedServer<NettyApplicationEngine, NettyApplicationEngine.Configuration> {
         KSLog.info("Starting web service on port $port")
 
@@ -95,6 +100,8 @@ object WebService {
         } else {
             body.alt
         }
+
+        _pings.tryEmit(body)
 
         call.application.launch(Dispatchers.IO) {
             runCatching {
