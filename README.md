@@ -23,6 +23,8 @@ The application uses environment variables for configuration:
 | Variable | Description |
 |----------|-------------|
 | `CHANEL_ID` | The ID of the Telegram channel to monitor and update |
+| `MAP_OWNER_ID` | Telegram user id allowed to run /map directly or via guest mode |
+| `MAP_GUEST_ID` | Telegram user id allowed to run /map only via guest mode in their DM with the owner |
 | `CHANEL_TITLE_PATTERN` | The pattern for the channel title (e.g., "Travel Blog %s") |
 | `CLICKHOUSE_URL` | The JDBC URL for the ClickHouse database |
 

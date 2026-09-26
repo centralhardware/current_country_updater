@@ -1,5 +1,6 @@
 package commands
 
+import Config
 import DatabaseService
 import WebService
 import dev.inmo.tgbotapi.extensions.api.EditLiveLocationInfo
@@ -23,12 +24,6 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.hours
 
 private val LIVE_PERIOD = 8.hours
-
-// The owner may run /map anywhere, directly or via guest mode.
-private const val OWNER_ID = 428985392L
-
-// This user may run it only through guest mode in their private chat with the owner.
-private const val GUEST_ID = 522104797L
 
 /** One live location per chat: a new /map replaces the previous one. */
 private val liveJobs = ConcurrentHashMap<Long, Job>()
@@ -57,7 +52,7 @@ private fun liveLocations(lat: Double, lon: Double): Flow<EditLiveLocationInfo> 
  * incoming ping for [LIVE_PERIOD] instead of a one-off static pin.
  */
 fun BehaviourContext.registerMapCommand() {
-    onCommand("map", initialFilter = { (it as? FromUserMessage)?.from?.id?.chatId?.long == OWNER_ID }) { message ->
+    onCommand("map", initialFilter = { (it as? FromUserMessage)?.from?.id?.chatId?.long == Config.MAP_OWNER_ID }) { message ->
         val lastLocation = DatabaseService.getLastLocation()
         if (lastLocation == null) {
             reply(message, "No location data available")
@@ -78,8 +73,8 @@ fun BehaviourContext.registerMapCommand() {
 
     onGuestRequestMessage(initialFilter = { message ->
         val from = message.from.id.chatId.long
-        val allowed = from == OWNER_ID ||
-            (from == GUEST_ID && message.chat.id.chatId.long == OWNER_ID)
+        val allowed = from == Config.MAP_OWNER_ID ||
+            (from == Config.MAP_GUEST_ID && message.chat.id.chatId.long == Config.MAP_OWNER_ID)
         allowed && message.text?.contains("/map") == true
     }) { message ->
         val lastLocation = DatabaseService.getLastLocation() ?: return@onGuestRequestMessage
