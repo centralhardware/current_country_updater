@@ -6,7 +6,12 @@ import WebService
 import dev.inmo.tgbotapi.extensions.api.EditLiveLocationInfo
 import dev.inmo.tgbotapi.extensions.api.handleLiveLocation
 import dev.inmo.tgbotapi.extensions.api.edit.location.live.editLiveLocation
+import dev.inmo.tgbotapi.extensions.api.deleteMessage
+import dev.inmo.tgbotapi.extensions.api.edit.location.live.stopLiveLocation
 import dev.inmo.tgbotapi.extensions.api.send.reply
+import dev.inmo.tgbotapi.types.InlineMessageId
+import dev.inmo.tgbotapi.types.MessageId
+import kotlinx.coroutines.flow.FlowCollector
 import dev.inmo.tgbotapi.extensions.behaviour_builder.BehaviourContext
 import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onCommand
 import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onGuestRequestMessage
@@ -27,6 +32,12 @@ private val LIVE_PERIOD = 8.hours
 
 /** One live location per chat: a new /map replaces the previous one. */
 private val liveJobs = ConcurrentHashMap<Long, Job>()
+
+/** The live location message last sent to each chat, deleted when a new /map arrives. */
+private val liveMessages = ConcurrentHashMap<Long, MessageId>()
+
+/** Guest answers are inline messages, which a bot cannot delete, so the old one is only stopped. */
+private val guestJobs = ConcurrentHashMap<Long, Pair<Job, InlineMessageId>>()
 
 private fun liveLocations(lat: Double, lon: Double): Flow<EditLiveLocationInfo> =
     WebService.pings
@@ -61,11 +72,17 @@ fun BehaviourContext.registerMapCommand() {
 
         val chatId = message.chat.id
         liveJobs.remove(chatId.chatId.long)?.cancel()
+        liveMessages.remove(chatId.chatId.long)?.let { runCatching { deleteMessage(chatId, it) } }
 
         val locations = liveLocations(lastLocation.latitude.toDouble(), lastLocation.longitude.toDouble())
 
         val job = launch {
-            handleLiveLocation(chatId, locations, liveTimeMillis = LIVE_PERIOD.inWholeMilliseconds)
+            handleLiveLocation(
+                chatId,
+                locations,
+                liveTimeMillis = LIVE_PERIOD.inWholeMilliseconds,
+                sentMessageFlow = FlowCollector { liveMessages[chatId.chatId.long] = it.messageId },
+            )
         }
         liveJobs[chatId.chatId.long] = job
         job.invokeOnCompletion { liveJobs.remove(chatId.chatId.long, job) }
@@ -78,6 +95,11 @@ fun BehaviourContext.registerMapCommand() {
         allowed && message.text?.contains("/map") == true
     }) { message ->
         val lastLocation = DatabaseService.getLastLocation() ?: return@onGuestRequestMessage
+        val guestChat = message.chat.id.chatId.long
+        guestJobs.remove(guestChat)?.let { (job, inlineMessageId) ->
+            job.cancel()
+            runCatching { stopLiveLocation(inlineMessageId) }
+        }
         val lat = lastLocation.latitude.toDouble()
         val lon = lastLocation.longitude.toDouble()
         val sent = reply(
@@ -91,7 +113,7 @@ fun BehaviourContext.registerMapCommand() {
             ),
         )
         val until = System.currentTimeMillis() + LIVE_PERIOD.inWholeMilliseconds
-        launch {
+        val job = launch {
             WebService.pings
                 .takeWhile { System.currentTimeMillis() < until }
                 .collect { ping ->
@@ -106,5 +128,8 @@ fun BehaviourContext.registerMapCommand() {
                     }
                 }
         }
+        val entry = job to sent.inlineMessageId
+        guestJobs[guestChat] = entry
+        job.invokeOnCompletion { guestJobs.remove(guestChat, entry) }
     }
 }
