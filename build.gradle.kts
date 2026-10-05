@@ -42,7 +42,7 @@ dependencies {
 
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
 
-    implementation("org.mnode.ical4j:ical4j:4.3.0")
+    implementation("org.mnode.ical4j:ical4j:4.4.0")
 
     implementation("org.flywaydb:flyway-core:13.8.1")
     implementation("org.flywaydb:flyway-database-clickhouse:10.26.0")
