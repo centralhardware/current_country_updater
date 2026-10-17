@@ -172,7 +172,8 @@ object DatabaseService {
         val latitude: Float,
         val longitude: Float,
         val country: String,
-        val locality: String
+        val locality: String,
+        val ts: Instant
     )
 
     fun getLastLocation(): Location? {
@@ -180,7 +181,7 @@ object DatabaseService {
             queryOf(
                 // language=SQL
                 """
-                    SELECT latitude, longitude, country, locality
+                    SELECT latitude, longitude, country, locality, toUnixTimestamp(ts) AS ts_epoch
                     FROM country_days_tracker_bot.country_days_tracker
                     ORDER BY date_time DESC
                     LIMIT 1
@@ -190,7 +191,8 @@ object DatabaseService {
                     row.float("latitude"),
                     row.float("longitude"),
                     row.string("country"),
-                    row.string("locality")
+                    row.string("locality"),
+                    Instant.ofEpochSecond(row.long("ts_epoch"))
                 )
             }.asSingle
         )
