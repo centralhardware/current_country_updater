@@ -1,5 +1,7 @@
 import dev.inmo.kslog.common.KSLog
+import dev.inmo.kslog.common.error
 import dev.inmo.kslog.common.info
+import dev.inmo.kslog.common.warning
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
@@ -12,7 +14,7 @@ import io.ktor.server.routing.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.PrimitiveKind
@@ -87,12 +89,13 @@ object WebService {
         val body = try {
             json.decodeFromString<LocationRequest>(bodyString)
         } catch (e: Exception) {
-            KSLog.info("Failed to parse location update: ${e.message}. Body: $bodyString")
+            KSLog.warning("Failed to parse location update: ${e.message}")
             call.respond(HttpStatusCode.BadRequest, "Invalid request: ${e.message}")
             return
         }
 
-        KSLog.info("Processing location update: $body")
+        // No coordinates or address in the log: they'd sit there forever.
+        KSLog.info("Location update at ${body.timestamp} (${body.country}, acc ${body.acc} m)")
 
         val validatedAlt = if (body.alt !in 0..14000) {
             KSLog.info("Altitude ${body.alt} is out of 0..14000 range, setting to 0")
@@ -103,7 +106,9 @@ object WebService {
 
         _pings.tryEmit(body)
 
-        call.application.launch(Dispatchers.IO) {
+        // Answer only once the row is stored: a 5xx makes the phone keep the
+        // ping and send it again, where an early 200 would drop it for good.
+        val saved = withContext(Dispatchers.IO) {
             runCatching {
                 val zone = body.timezone.toZone()
                 DatabaseService.save(
@@ -127,14 +132,15 @@ object WebService {
                     body.m,
                     body.bs ?: 0
                 )
-            }.onSuccess {
-                KSLog.info("Successfully saved location update")
-            }.onFailure { error ->
-                KSLog.info("Failed to save location update: ${error.message}. Body: $bodyString")
             }
         }
 
-        call.respond(HttpStatusCode.OK)
+        saved.onSuccess {
+            call.respond(HttpStatusCode.OK)
+        }.onFailure { error ->
+            KSLog.error("Failed to save location update at ${body.timestamp}", error)
+            call.respond(HttpStatusCode.ServiceUnavailable, "Not saved: ${error.message}")
+        }
     }
 
     private suspend fun handleCalendar(call: ApplicationCall) {
