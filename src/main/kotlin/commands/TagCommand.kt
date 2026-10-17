@@ -16,13 +16,21 @@ fun BehaviourContext.registerTagCommands() {
         }
 
         val tagName = args[0]
-        val expiresAt = args.getOrNull(1)?.let { parseDuration(it) }
-
-        TagManager.addTag(tagName, expiresAt)
-
         val durationText = args.getOrNull(1)
+        val expiresAt = durationText?.let { parseDuration(it) }
+        if (durationText != null && expiresAt == null) {
+            reply(message, "Unknown duration \"$durationText\". Use a positive number with m, h or d: 30m, 1h, 2d")
+            return@onCommandWithArgs
+        }
+
+        val tag = TagManager.addTag(tagName, expiresAt)
+        if (tag == null) {
+            reply(message, "\"$tagName\" has no letters or digits to make a tag from")
+            return@onCommandWithArgs
+        }
+
         val expiryText = if (durationText != null) " (expires in $durationText)" else ""
-        reply(message, "Tag ${TagManager.getActiveTags().last { it.contains(TagManager.sanitizeForHashtag(tagName.removePrefix("#"))) }} added$expiryText")
+        reply(message, "Tag $tag added$expiryText")
     }
 
     onCommandWithArgs("removetag", initialFilter = fromOwner) { message, args ->
@@ -54,9 +62,9 @@ fun BehaviourContext.registerTagCommands() {
     }
 }
 
-private fun parseDuration(input: String): Instant? {
+internal fun parseDuration(input: String): Instant? {
     val match = Regex("^(\\d+)([mhd])$").matchEntire(input.trim().lowercase()) ?: return null
-    val amount = match.groupValues[1].toLong()
+    val amount = match.groupValues[1].toLongOrNull()?.takeIf { it > 0 } ?: return null
     val unit = when (match.groupValues[2]) {
         "m" -> ChronoUnit.MINUTES
         "h" -> ChronoUnit.HOURS

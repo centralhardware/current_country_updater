@@ -4,8 +4,9 @@ import java.time.Instant
 
 object TagManager {
 
-    fun addTag(name: String, expiresAt: Instant? = null) {
-        val normalized = normalizeTag(name)
+    /** Saves the tag and returns its normalised form, or null when nothing is left of [name]. */
+    fun addTag(name: String, expiresAt: Instant? = null): String? {
+        val normalized = normalizeTag(name) ?: return null
         sessionOf(PostgresService.dataSource).use { session ->
             session.update(
                 queryOf(
@@ -17,14 +18,15 @@ object TagManager {
                     normalized,
                     expiresAt
                 )
-            )   
+            )
         }
+        return normalized
     }
 
     fun removeTag(name: String): Boolean {
         return sessionOf(PostgresService.dataSource).use { session ->
             session.update(
-                queryOf("DELETE FROM tags WHERE name = ?", normalizeTag(name))
+                queryOf("DELETE FROM tags WHERE name = ?", normalizeTag(name) ?: return false)
             ) > 0
         }
     }
@@ -52,8 +54,8 @@ object TagManager {
         return value.replace(" ", "_").replace(Regex("[^\\p{L}\\p{N}_]"), "")
     }
 
-    private fun normalizeTag(name: String): String {
+    private fun normalizeTag(name: String): String? {
         val tag = sanitizeForHashtag(name.removePrefix("#"))
-        return "#$tag"
+        return if (tag.isEmpty()) null else "#$tag"
     }
 }
