@@ -10,8 +10,8 @@ import dev.inmo.tgbotapi.extensions.utils.asChannelChat
 import dev.inmo.tgbotapi.extensions.utils.extensions.raw.caption_entities
 import dev.inmo.tgbotapi.extensions.utils.extensions.raw.entities
 import dev.inmo.tgbotapi.types.message.content.MediaGroupContent
-import dev.inmo.tgbotapi.types.message.content.PhotoContent
-import dev.inmo.tgbotapi.types.message.content.VideoContent
+import dev.inmo.tgbotapi.types.message.content.TextContent
+import dev.inmo.tgbotapi.types.message.content.TextedMediaContent
 import dev.inmo.tgbotapi.types.toChatId
 import dev.inmo.tgbotapi.utils.buildEntities
 import dev.inmo.tgbotapi.utils.regular
@@ -27,7 +27,8 @@ object ChannelManager {
             val hashtags = buildLocationHashtags()
 
             when (it.content) {
-                is PhotoContent, is MediaGroupContent<*>, is VideoContent -> {
+                // Photo, video, GIF, document, audio, voice -- anything that carries a caption
+                is TextedMediaContent, is MediaGroupContent<*> -> {
                     val msgSources = it.caption_entities ?: emptyList()
                     editMessageCaption(
                         chatId = it.chat.id,
@@ -35,7 +36,7 @@ object ChannelManager {
                         entities = msgSources + buildEntities { regular(hashtags) }
                     )
                 }
-                else -> {
+                is TextContent -> {
                     val msgSources = it.entities ?: emptyList()
                     editMessageText(
                         chatId = it.chat.id,
@@ -43,6 +44,8 @@ object ChannelManager {
                         entities = msgSources + buildEntities { regular(hashtags) }
                     )
                 }
+                // Stickers, video notes, polls, locations, dice: no text to append to
+                else -> KSLog.info("Skipping hashtags for ${it.content::class.simpleName}")
             }
         }
     }
