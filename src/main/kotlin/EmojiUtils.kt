@@ -13,8 +13,8 @@ fun getCountryCode(country: String): String {
     return matches[0].name
 }
 
-fun extractCountryCode(title: String): String {
-    val emoji = EmojiManager.extractEmojisInOrder(title).first()
+fun extractCountryCode(title: String): String? {
+    val emoji = EmojiManager.extractEmojisInOrder(title).firstOrNull() ?: return null
     return emoji.description.replace("flag: ", "").lowercase()
 }
 
