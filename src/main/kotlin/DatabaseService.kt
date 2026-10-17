@@ -155,7 +155,7 @@ object DatabaseService {
                 """
                     SELECT country, COUNT(*) AS count_of_days
                     FROM (
-                        SELECT DISTINCT LOWER(country) AS country, toStartOfDay(date_time)
+                        SELECT DISTINCT country, toDate(date_time)
                         FROM country_days_tracker_bot.country_days_tracker
                         WHERE country != ''
                     )
@@ -298,11 +298,11 @@ object DatabaseService {
                             SELECT
                                 country,
                                 day,
-                                -- Same session rule as getCountrySessions: a new session
-                                -- starts only on a real departure (another country logged
-                                -- in the gap, or a > 30-day gap with nothing logged), not
-                                -- on a 1-2 day logging gap. So the "current" session is the
-                                -- latest continuous stay, not fragmented by missing days.
+                                -- Deliberately looser than getCountrySessions, which breaks a
+                                -- calendar event on any day without a log: here a new session
+                                -- starts only on a real departure (another country logged in
+                                -- the gap, or a > 30-day gap with nothing logged), so the
+                                -- "current" stay isn't cut short by a few missing days.
                                 sum(
                                     if(
                                         prev_same = toDate(0)
