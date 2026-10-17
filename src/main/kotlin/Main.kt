@@ -4,6 +4,8 @@ import commands.registerMapCommand
 import commands.registerOverrideCommands
 import commands.registerStatCommand
 import commands.registerTagCommands
+import dev.inmo.kslog.common.KSLog
+import dev.inmo.kslog.common.error
 import dev.inmo.krontab.doInfinity
 import dev.inmo.micro_utils.common.Warning
 import dev.inmo.tgbotapi.AppConfig
@@ -20,7 +22,9 @@ suspend fun main() {
     longPolling ("CurrentCountryUpdater") {
         launch {
             doInfinity("0 /1 * * *") {
-                updateChannelTitle(Config.CHANNEL_ID, Config.CHANEL_TITLE_PATTERN)
+                // One bad tick (network, an unknown country) must not end the schedule.
+                runCatching { updateChannelTitle(Config.CHANNEL_ID, Config.CHANEL_TITLE_PATTERN) }
+                    .onFailure { KSLog.error("Channel title update failed", it) }
             }
         }
 

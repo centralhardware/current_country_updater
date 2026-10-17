@@ -59,4 +59,9 @@ class EmojiFlagTest {
             assertEquals(c.lowercase(), parsed)
         }
     }
+
+    @Test
+    fun `extractCountryCode returns null for a title without a flag`() {
+        assertEquals(null, extractCountryCode("Plain title"))
+    }
 }
