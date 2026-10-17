@@ -1,14 +1,26 @@
 import com.neovisionaries.i18n.CountryCode
 import net.fellbaum.jemoji.EmojiManager
+import java.util.Locale
+
+/**
+ * The tracker stores `Locale.of("en", code).displayCountry`, so the exact
+ * inverse is the first lookup: it knows every name the tracker can have
+ * written ("Vietnam", "Türkiye", "Bosnia & Herzegovina"), which nv-i18n's
+ * official names do not.
+ */
+private val codeByDisplayName: Map<String, String> =
+    Locale.getISOCountries().associateBy { Locale.of("en", it).displayCountry.lowercase() }
 
 fun getCountryCode(country: String): String {
+    codeByDisplayName[country.trim().lowercase()]?.let { return it }
+
+    // Older rows and hand-written trips may use other spellings.
     val normalized = country
         .replace("&", "and")
-        .replace("vietnam", "Viet Nam")
         .replace("South Korea", "Korea, Republic of")
         .trim()
 
-    val matches = CountryCode.findByName("(?i)" + normalized)
+    val matches = CountryCode.findByName("(?i)" + Regex.escape(normalized))
     require(matches.isNotEmpty()) { "Unknown country: $country" }
     return matches[0].name
 }

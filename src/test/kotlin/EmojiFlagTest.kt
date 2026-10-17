@@ -64,4 +64,18 @@ class EmojiFlagTest {
     fun `extractCountryCode returns null for a title without a flag`() {
         assertEquals(null, extractCountryCode("Plain title"))
     }
+
+    @Test
+    fun `flags for names the tracker stores`() {
+        assertEquals("\uD83C\uDDFB\uD83C\uDDF3", countryCodeToEmoji("Vietnam"))
+        assertEquals("\uD83C\uDDF9\uD83C\uDDF7", countryCodeToEmoji("Türkiye"))
+        assertEquals("\uD83C\uDDE7\uD83C\uDDE6", countryCodeToEmoji("Bosnia & Herzegovina"))
+    }
+
+    @Test
+    fun `every stored display name resolves`() {
+        for (code in java.util.Locale.getISOCountries()) {
+            assertEquals(code, getCountryCode(java.util.Locale.of("en", code).displayCountry))
+        }
+    }
 }
