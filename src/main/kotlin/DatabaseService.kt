@@ -183,7 +183,9 @@ object DatabaseService {
                 """
                     SELECT latitude, longitude, country, locality, toUnixTimestamp(ts) AS ts_epoch
                     FROM country_days_tracker_bot.country_days_tracker
-                    ORDER BY date_time DESC
+                    -- ts, not date_time: local wall time runs backwards on a
+                    -- westward flight, and ts is the table's sorting key.
+                    ORDER BY ts DESC
                     LIMIT 1
                 """.trimIndent()
             ).map { row ->
@@ -271,7 +273,8 @@ object DatabaseService {
                         data AS (
                             SELECT
                                 toDate(date_time) AS day,
-                                country
+                                country,
+                                max(ts) AS last_ts
                             FROM country_days_tracker_bot.country_days_tracker
                             WHERE country != ''
                             GROUP BY day, country
@@ -288,6 +291,7 @@ object DatabaseService {
                             SELECT
                                 d.country AS country,
                                 d.day AS day,
+                                d.last_ts AS last_ts,
                                 lagInFrame(d.day) OVER (
                                     PARTITION BY d.country ORDER BY d.day
                                     ROWS BETWEEN 1 PRECEDING AND CURRENT ROW
@@ -300,6 +304,7 @@ object DatabaseService {
                             SELECT
                                 country,
                                 day,
+                                last_ts,
                                 -- Deliberately looser than getCountrySessions, which breaks a
                                 -- calendar event on any day without a log: here a new session
                                 -- starts only on a real departure (another country logged in
@@ -323,7 +328,8 @@ object DatabaseService {
                                 country,
                                 MIN(day) AS start_day,
                                 MAX(day) AS end_day,
-                                COUNT() AS days_in_country
+                                COUNT() AS days_in_country,
+                                MAX(last_ts) AS last_ts
                             FROM with_sessions
                             GROUP BY country, session_id
                         )
@@ -333,7 +339,9 @@ object DatabaseService {
                     FROM (
                         SELECT
                             *,
-                            row_number() OVER (ORDER BY end_day DESC) AS rn
+                            -- On a border-crossing day both sessions end on the
+                            -- same day; the one pinged last is the current one.
+                            row_number() OVER (ORDER BY end_day DESC, last_ts DESC) AS rn
                         FROM sessions_grouped
                     )
                     WHERE rn = 1

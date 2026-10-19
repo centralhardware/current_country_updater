@@ -11,6 +11,11 @@ object Config {
 
     val CALENDAR_SECRET: String = System.getenv("CALENDAR_SECRET")
 
+    // HTTP Basic credentials for POST /location (OwnTracks HTTP mode). Unset
+    // password leaves the endpoint open.
+    val LOCATION_USER: String? = System.getenv("LOCATION_USER")
+    val LOCATION_PASSWORD: String? = System.getenv("LOCATION_PASSWORD")
+
     // May run /map anywhere, directly or via guest mode.
     val MAP_OWNER_ID: Long = System.getenv("MAP_OWNER_ID").toLong()
 
