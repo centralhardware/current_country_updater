@@ -22,6 +22,7 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
+import java.security.MessageDigest
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
@@ -62,11 +63,18 @@ object WebService {
 
     private val _pings = MutableSharedFlow<LocationRequest>(extraBufferCapacity = 16)
 
-    /** Every accepted ping, as it arrives -- feeds the /map live location. */
+    /** Every saved ping newer than the last one -- feeds the /map live location. */
     val pings = _pings.asSharedFlow()
+
+    /** The newest ping pushed to [pings]; a replayed backlog must not drag the pin back. */
+    @Volatile
+    private var lastEmitted: Instant = Instant.EPOCH
 
     fun start(port: Int = 80): EmbeddedServer<NettyApplicationEngine, NettyApplicationEngine.Configuration> {
         KSLog.info("Starting web service on port $port")
+        if (Config.LOCATION_PASSWORD.isNullOrEmpty()) {
+            KSLog.warning("LOCATION_PASSWORD not set: POST /location accepts unauthenticated pings")
+        }
 
         return embeddedServer(Netty, port = port) {
             install(ContentNegotiation) {
@@ -85,6 +93,11 @@ object WebService {
     }
 
     private suspend fun handleLocationUpdate(call: ApplicationCall) {
+        if (!authorized(call.request.headers[HttpHeaders.Authorization], Config.LOCATION_USER, Config.LOCATION_PASSWORD)) {
+            call.response.headers.append(HttpHeaders.WWWAuthenticate, "Basic realm=\"location\"")
+            call.respond(HttpStatusCode.Unauthorized)
+            return
+        }
         val bodyString = call.receiveText()
         val body = try {
             json.decodeFromString<LocationRequest>(bodyString)
@@ -103,8 +116,6 @@ object WebService {
         } else {
             body.alt
         }
-
-        _pings.tryEmit(body)
 
         // Answer only once the row is stored: a 5xx makes the phone keep the
         // ping and send it again, where an early 200 would drop it for good.
@@ -136,6 +147,11 @@ object WebService {
         }
 
         saved.onSuccess {
+            // Only once stored, so a retried ping moves the pin once.
+            if (body.timestamp.isAfter(lastEmitted)) {
+                lastEmitted = body.timestamp
+                _pings.tryEmit(body)
+            }
             call.respond(HttpStatusCode.OK)
         }.onFailure { error ->
             KSLog.error("Failed to save location update at ${body.timestamp}", error)
@@ -147,36 +163,51 @@ object WebService {
         call.respondText(CalendarService.buildCalendar(), ContentType("text", "calendar"))
     }
 
-    /**
-     * The `timezone` field is whatever the phone had to hand. It is usually an
-     * IANA name ("Asia/Bangkok"), but it arrives as a bare offset often enough
-     * to matter -- "+07:00" from a device with no zone database, and the
-     * Android-style "GMT-06:00".
-     *
-     * `TimeZone.getTimeZone` must not be used for this: for anything it does
-     * not recognise it silently returns GMT. A phone reporting "+07:00" was
-     * being logged as UTC, seven hours out, with nothing in the logs to say
-     * so -- which is where the 22108 rows of plain `GMT` in the table came
-     * from.
-     *
-     * `ZoneId.of` parses the IANA names and the offset forms alike, and throws
-     * on anything it cannot read rather than guessing. SHORT_IDS covers the
-     * three-letter aliases ("PST", "IST"). A string past all of those is
-     * logged and treated as UTC -- the same result as before, but said out
-     * loud.
-     *
-     * Whatever it resolves to, only `zone.id` is stored and only for the
-     * record: the arithmetic runs on the offset, so an offset-only zone is
-     * exactly as usable here as a named one.
-     */
-    private fun String.toZone(): ZoneId =
-        runCatching { ZoneId.of(this) }
-            .recoverCatching { ZoneId.of(this, ZoneId.SHORT_IDS) }
-            .recoverCatching { ZoneOffset.of(this) }
-            .getOrElse {
-                KSLog.info("Unrecognised timezone \"$this\", falling back to UTC")
-                ZoneOffset.UTC
-            }
-
     private fun String.toCountry() = Locale.of("en", this).displayCountry
+}
+
+/**
+ * The `timezone` field is whatever the phone had to hand. It is usually an
+ * IANA name ("Asia/Bangkok"), but it arrives as a bare offset often enough
+ * to matter -- "+07:00" from a device with no zone database, and the
+ * Android-style "GMT-06:00".
+ *
+ * `TimeZone.getTimeZone` must not be used for this: for anything it does
+ * not recognise it silently returns GMT. A phone reporting "+07:00" was
+ * being logged as UTC, seven hours out, with nothing in the logs to say
+ * so -- which is where the 22108 rows of plain `GMT` in the table came
+ * from.
+ *
+ * `ZoneId.of` parses the IANA names and the offset forms alike, and throws
+ * on anything it cannot read rather than guessing. SHORT_IDS covers the
+ * three-letter aliases ("PST", "IST"). A string past all of those is
+ * logged and treated as UTC -- the same result as before, but said out
+ * loud.
+ *
+ * Whatever it resolves to, only `zone.id` is stored and only for the
+ * record: the arithmetic runs on the offset, so an offset-only zone is
+ * exactly as usable here as a named one.
+ */
+internal fun String.toZone(): ZoneId =
+    runCatching { ZoneId.of(this) }
+        .recoverCatching { ZoneId.of(this, ZoneId.SHORT_IDS) }
+        .recoverCatching { ZoneOffset.of(this) }
+        .getOrElse {
+            KSLog.info("Unrecognised timezone \"$this\", falling back to UTC")
+            ZoneOffset.UTC
+        }
+
+/**
+ * HTTP Basic credentials, compared in constant time. With no password
+ * configured the endpoint stays open (logged once at startup), so an existing
+ * phone keeps working until the secret is set on both ends.
+ */
+internal fun authorized(header: String?, user: String?, password: String?): Boolean {
+    if (password.isNullOrEmpty()) return true
+    val given = header
+        ?.takeIf { it.startsWith("Basic ", ignoreCase = true) }
+        ?.let { runCatching { Base64.getDecoder().decode(it.substring(6).trim()) }.getOrNull() }
+        ?: return false
+    val expected = "${user.orEmpty()}:$password".toByteArray()
+    return MessageDigest.isEqual(given, expected)
 }
