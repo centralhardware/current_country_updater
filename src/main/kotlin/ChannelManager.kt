@@ -44,7 +44,13 @@ object ChannelManager {
                 is TextContent -> TEXT_LIMIT
                 else -> null
             }
-            val length = (it.content as? TextedContent)?.text?.length ?: 0
+            // In an album the hashtags go to the item that shows the caption: Telegram lays
+            // per-item captions over the album, so tagging the first photo hides them when
+            // another photo carries the text.
+            val target = (it.content as? MediaGroupContent<*>)?.group?.let { group ->
+                group.lastOrNull { part -> !part.content.text.isNullOrEmpty() } ?: group.first()
+            }
+            val length = (target?.content ?: it.content as? TextedContent)?.text?.length ?: 0
             if (limit != null && length + hashtags.length > limit) {
                 KSLog.warning("Skipping hashtags: ${length + hashtags.length} chars would exceed the $limit limit")
                 return@onContentMessage
@@ -53,7 +59,14 @@ object ChannelManager {
             runCatching {
                 when (it.content) {
                     // Photo, video, GIF, document, audio, voice -- anything that carries a caption
-                    is TextedMediaContent, is MediaGroupContent<*> -> {
+                    is MediaGroupContent<*> -> {
+                        editMessageCaption(
+                            chatId = it.chat.id,
+                            messageId = target!!.sourceMessage.messageId,
+                            entities = target.content.textSources + buildEntities { regular(hashtags) }
+                        )
+                    }
+                    is TextedMediaContent -> {
                         val msgSources = it.caption_entities ?: emptyList()
                         editMessageCaption(
                             chatId = it.chat.id,
