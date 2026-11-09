@@ -16,6 +16,9 @@ object Config {
     val LOCATION_USER: String? = System.getenv("LOCATION_USER")
     val LOCATION_PASSWORD: String? = System.getenv("LOCATION_PASSWORD")
 
+    // OpenCage key for POST /pub reverse geocoding; the recorder's "opencage:KEY" form is accepted.
+    val OPENCAGE_KEY: String? = System.getenv("OPENCAGE_KEY")?.removePrefix("opencage:")?.takeIf { it.isNotBlank() }
+
     // May run /map anywhere, directly or via guest mode.
     val MAP_OWNER_ID: Long = System.getenv("MAP_OWNER_ID").toLong()
 

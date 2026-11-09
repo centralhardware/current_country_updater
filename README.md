@@ -27,6 +27,7 @@ The application uses environment variables for configuration:
 | `MAP_GUEST_ID` | Telegram user id allowed to run /map only via guest mode in their DM with the owner |
 | `CHANEL_TITLE_PATTERN` | The pattern for the channel title (e.g., "Travel Blog %s") |
 | `CLICKHOUSE_URL` | The JDBC URL for the ClickHouse database |
+| `OPENCAGE_KEY` | OpenCage key for reverse geocoding OwnTracks pings on `POST /pub` (`opencage:` prefix optional) |
 
 ## Database Schema
 
@@ -86,3 +87,6 @@ docker run -e CHANEL_ID=your_channel_id \
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+## OwnTracks
+
+Point the OwnTracks app (HTTP mode) at `POST /pub` with the `LOCATION_USER`/`LOCATION_PASSWORD` Basic credentials. It replaces the OwnTracks Recorder: geohash-7, OpenCage reverse geocoding cached per cell in Postgres (`geo_cache`), time zone from OpenCage, reply `[]`, and 503 (phone retries) when geocoding or the save fails. `POST /location` (the recorder hook's flat JSON) still works.
