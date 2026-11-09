@@ -85,6 +85,10 @@ object WebService {
                 post("/location") {
                     handleLocationUpdate(call)
                 }
+                // The OwnTracks app's own HTTP mode, formerly served by the OwnTracks Recorder.
+                post("/pub") {
+                    OwnTracks.handlePub(call)
+                }
                 get("/calendar/${Config.CALENDAR_SECRET}/calendar.ics") {
                     handleCalendar(call)
                 }
@@ -107,7 +111,17 @@ object WebService {
             return
         }
 
-        // No coordinates or address in the log: they'd sit there forever.
+        // Answer only once the row is stored: a 5xx makes the phone keep the
+        // ping and send it again, where an early 200 would drop it for good.
+        save(body).onSuccess {
+            call.respond(HttpStatusCode.OK)
+        }.onFailure { error ->
+            call.respond(HttpStatusCode.ServiceUnavailable, "Not saved: ${error.message}")
+        }
+    }
+
+    /** Stores one ping and feeds the /map live location; the failure is logged here. */
+    suspend fun save(body: LocationRequest): Result<Unit> {
         KSLog.info("Location update at ${body.timestamp} (${body.country}, acc ${body.acc} m)")
 
         val validatedAlt = if (body.alt !in 0..14000) {
@@ -117,8 +131,6 @@ object WebService {
             body.alt
         }
 
-        // Answer only once the row is stored: a 5xx makes the phone keep the
-        // ping and send it again, where an early 200 would drop it for good.
         val saved = withContext(Dispatchers.IO) {
             runCatching {
                 val zone = body.timezone.toZone()
@@ -146,16 +158,14 @@ object WebService {
             }
         }
 
-        saved.onSuccess {
+        return saved.onSuccess {
             // Only once stored, so a retried ping moves the pin once.
             if (body.timestamp.isAfter(lastEmitted)) {
                 lastEmitted = body.timestamp
                 _pings.tryEmit(body)
             }
-            call.respond(HttpStatusCode.OK)
         }.onFailure { error ->
             KSLog.error("Failed to save location update at ${body.timestamp}", error)
-            call.respond(HttpStatusCode.ServiceUnavailable, "Not saved: ${error.message}")
         }
     }
 
