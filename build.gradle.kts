@@ -44,7 +44,7 @@ dependencies {
 
     implementation("org.mnode.ical4j:ical4j:4.4.0")
 
-    implementation("org.flywaydb:flyway-core:13.12.0")
+    implementation("org.flywaydb:flyway-core:13.12.1")
     implementation("org.flywaydb:flyway-database-clickhouse:10.26.2")
     implementation("org.flywaydb:flyway-database-postgresql:13.12.0")
 
