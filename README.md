@@ -43,6 +43,13 @@ CREATE TABLE country_days_tracker_bot.country_days_tracker (
 ORDER BY date_time;
 ```
 
+## Modules
+
+Two Gradle modules, one process and one container:
+
+- `ingest` -- OwnTracks intake: `POST /pub`, the JSON Schema contract, OpenCage reverse geocoding, and the ClickHouse/Postgres storage with its migrations. It has no Telegram dependency.
+- `bot` -- the Telegram bot (channel title, commands, `/map`) and the calendar feed. It hosts the ingest routes on its HTTP server and builds the image (`./gradlew jibDockerBuild`).
+
 ## Building
 
 ### Using Gradle

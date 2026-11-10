@@ -2,7 +2,7 @@ package commands
 
 import Config
 import DatabaseService
-import WebService
+import LocationStore
 import dev.inmo.tgbotapi.extensions.api.EditLiveLocationInfo
 import dev.inmo.tgbotapi.extensions.api.handleLiveLocation
 import dev.inmo.tgbotapi.extensions.api.deleteMessage
@@ -33,7 +33,7 @@ private val liveMessages = ConcurrentHashMap<Long, MessageId>()
 
 
 private fun liveLocations(lat: Double, lon: Double): Flow<EditLiveLocationInfo> =
-    WebService.pings
+    LocationStore.pings
         .map { ping ->
             EditLiveLocationInfo(
                 latitude = ping.latitude.toDouble(),
