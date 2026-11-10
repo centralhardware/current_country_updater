@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://centralhardware.me/schemas/owntracks-message.json",
+  "title": "OwnTracks HTTP message accepted by POST /pub",
+  "description": "Strict layer over the official OwnTracks schema (owntracks/json-schema @17b79ef, vendored in owntracks/message.json): the message must satisfy the official schema AND, for locations, carry no keys outside the list below. Any difference fails the request (503) so the phone keeps the message queued.",
+  "type": "object",
+  "required": [
+    "_type"
+  ],
+  "properties": {
+    "_type": {
+      "enum": [
+        "location",
+        "lwt",
+        "transition",
+        "waypoint",
+        "waypoints",
+        "card",
+        "cmd",
+        "beacon",
+        "status",
+        "steps",
+        "encrypted",
+        "configuration",
+        "dump",
+        "request"
+      ]
+    }
+  },
+  "if": {
+    "properties": {
+      "_type": {
+        "const": "location"
+      }
+    }
+  },
+  "then": {
+    "$ref": "#/$defs/location"
+  },
+  "$defs": {
+    "location": {
+      "type": "object",
+      "required": [
+        "_type",
+        "lat",
+        "lon",
+        "tst"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "_type": {
+          "const": "location"
+        },
+        "_id": {
+          "type": "string"
+        },
+        "_http": {
+          "type": "boolean"
+        },
+        "_geoprec": {
+          "type": "number"
+        },
+        "lat": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "lon": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        },
+        "tst": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "created_at": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "alt": {
+          "type": "number"
+        },
+        "batt": {
+          "type": "number"
+        },
+        "bs": {
+          "type": "integer"
+        },
+        "acc": {
+          "type": "number"
+        },
+        "vac": {
+          "type": "number"
+        },
+        "vel": {
+          "type": "number"
+        },
+        "cog": {
+          "type": "number"
+        },
+        "p": {
+          "type": "number"
+        },
+        "m": {
+          "type": "integer"
+        },
+        "conn": {
+          "type": "string"
+        },
+        "t": {
+          "type": "string"
+        },
+        "tid": {
+          "type": "string"
+        },
+        "topic": {
+          "type": "string"
+        },
+        "SSID": {
+          "type": "string"
+        },
+        "BSSID": {
+          "type": "string"
+        },
+        "ssid": {
+          "type": "string"
+        },
+        "bssid": {
+          "type": "string"
+        },
+        "poi": {
+          "type": "string"
+        },
+        "tag": {
+          "type": "string"
+        },
+        "image": {
+          "type": "string"
+        },
+        "imagename": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "inregions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "inrids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "motionactivities": {
+          "type": "array"
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "https://owntracks.org/schemas/message.json"
+    }
+  ]
+}

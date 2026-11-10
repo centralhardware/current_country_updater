@@ -46,6 +46,7 @@ dependencies {
 
     implementation("org.flywaydb:flyway-core:13.12.1")
     implementation("org.flywaydb:flyway-database-clickhouse:10.26.2")
+    implementation("com.networknt:json-schema-validator:1.5.6")
     implementation("org.flywaydb:flyway-database-postgresql:13.12.1")
 
     testImplementation(kotlin("test"))

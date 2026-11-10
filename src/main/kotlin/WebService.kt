@@ -73,7 +73,7 @@ object WebService {
     fun start(port: Int = 80): EmbeddedServer<NettyApplicationEngine, NettyApplicationEngine.Configuration> {
         KSLog.info("Starting web service on port $port")
         if (Config.LOCATION_PASSWORD.isNullOrEmpty()) {
-            KSLog.warning("LOCATION_PASSWORD not set: POST /location accepts unauthenticated pings")
+            KSLog.warning("LOCATION_PASSWORD not set: POST /pub accepts unauthenticated pings")
         }
 
         return embeddedServer(Netty, port = port) {
@@ -82,9 +82,6 @@ object WebService {
             }
 
             routing {
-                post("/location") {
-                    handleLocationUpdate(call)
-                }
                 // The OwnTracks app's own HTTP mode, formerly served by the OwnTracks Recorder.
                 post("/pub") {
                     OwnTracks.handlePub(call)
@@ -94,30 +91,6 @@ object WebService {
                 }
             }
         }.start(wait = false)
-    }
-
-    private suspend fun handleLocationUpdate(call: ApplicationCall) {
-        if (!authorized(call.request.headers[HttpHeaders.Authorization], Config.LOCATION_USER, Config.LOCATION_PASSWORD)) {
-            call.response.headers.append(HttpHeaders.WWWAuthenticate, "Basic realm=\"location\"")
-            call.respond(HttpStatusCode.Unauthorized)
-            return
-        }
-        val bodyString = call.receiveText()
-        val body = try {
-            json.decodeFromString<LocationRequest>(bodyString)
-        } catch (e: Exception) {
-            KSLog.warning("Failed to parse location update: ${e.message}")
-            call.respond(HttpStatusCode.BadRequest, "Invalid request: ${e.message}")
-            return
-        }
-
-        // Answer only once the row is stored: a 5xx makes the phone keep the
-        // ping and send it again, where an early 200 would drop it for good.
-        save(body).onSuccess {
-            call.respond(HttpStatusCode.OK)
-        }.onFailure { error ->
-            call.respond(HttpStatusCode.ServiceUnavailable, "Not saved: ${error.message}")
-        }
     }
 
     /** Stores one ping and feeds the /map live location; the failure is logged here. */

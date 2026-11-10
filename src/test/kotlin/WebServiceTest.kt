@@ -42,18 +42,4 @@ class WebServiceTest {
         assertFalse(authorized("Bearer secret", "me", "secret"))
         assertTrue(authorized(null, null, null), "no password configured leaves it open")
     }
-
-    @Test
-    fun `location request decoding`() {
-        val json = Json { ignoreUnknownKeys = true }
-        val body = """
-            {"latitude":13.7,"longitude":100.5,"timezone":"Asia/Bangkok","country":"TH",
-             "timestamp":1760000000,"alt":5,"batt":80,"acc":10,"vac":3,"conn":"w",
-             "locality":"Bangkok","ghash":"w4rq","p":101.3,"addr":"x","unknown":"ignored"}
-        """.trimIndent()
-        val r = json.decodeFromString<LocationRequest>(body)
-        assertEquals(Instant.ofEpochSecond(1760000000), r.timestamp)
-        assertEquals(0, r.vel)
-        assertEquals(null, r.bs)
-    }
 }
