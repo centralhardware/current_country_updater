@@ -6,6 +6,10 @@ import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import kotlinx.serialization.json.*
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.networknt.schema.JsonSchema
+import com.networknt.schema.JsonSchemaFactory
+import com.networknt.schema.SpecVersion
 import java.time.Instant
 
 /**
@@ -23,7 +27,8 @@ import java.time.Instant
  * waypoint, card, status...) is acknowledged and dropped, as the recorder's
  * hook did.
  *
- * Contract drift: the request fails (503) when the JSON differs from what we
+ * Contract drift: every body is validated against the JSON Schema in
+ * resources/owntracks-message.schema.json; the request fails (503) when the JSON differs from what we
  * expect at all -- an unknown `_type`, an unknown location key, a missing
  * lat/lon/tst, or a field of the wrong JSON type. The phone keeps those points
  * queued and the "no OwnTracks ping for 12 h" alert fires, instead of data
@@ -31,37 +36,14 @@ import java.time.Instant
  */
 object OwnTracks {
 
-    private enum class Kind { NUM, STR, BOOL, ARR }
+    /** The contract, as a standard JSON Schema (draft 2020-12) in resources. */
+    private val schema: JsonSchema = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012)
+        .getSchema(OwnTracks::class.java.getResourceAsStream("/owntracks-message.schema.json"))
+    private val mapper = ObjectMapper()
 
-    /** Every key a location may carry, with its JSON type; anything else is a contract change. */
-    private val SCHEMA: Map<String, Kind> = buildMap {
-        listOf("lat", "lon", "tst", "created_at", "alt", "batt", "bs", "acc", "vac", "vel", "cog", "m", "p", "_geoprec")
-            .forEach { put(it, Kind.NUM) }
-        listOf("_type", "_id", "tid", "topic", "conn", "t", "SSID", "BSSID", "ssid", "bssid", "poi", "tag",
-            "image", "imagename", "source").forEach { put(it, Kind.STR) }
-        listOf("inregions", "inrids", "motionactivities").forEach { put(it, Kind.ARR) }
-        put("_http", Kind.BOOL)
-    }
-    private val REQUIRED = listOf("lat", "lon", "tst")
-    private val KNOWN_TYPES = setOf(
-        "location", "lwt", "transition", "waypoint", "waypoints", "card", "cmd", "beacon",
-        "status", "steps", "encrypted", "configuration", "dump", "request",
-    )
-
-    /** Every way [msg] differs from the location contract; empty when it matches exactly. */
-    internal fun violations(msg: JsonObject): List<String> = buildList {
-        REQUIRED.filter { it !in msg }.forEach { add("missing $it") }
-        for ((k, v) in msg) {
-            val kind = SCHEMA[k] ?: run { add("unknown key $k"); continue }
-            val ok = when (kind) {
-                Kind.NUM -> v is JsonPrimitive && !v.isString && v.doubleOrNull != null
-                Kind.STR -> v is JsonPrimitive && v.isString
-                Kind.BOOL -> v is JsonPrimitive && !v.isString && v.booleanOrNull != null
-                Kind.ARR -> v is JsonArray
-            }
-            if (!ok) add("$k is not ${kind.name.lowercase()}: $v")
-        }
-    }
+    /** Every way [body] differs from the schema; empty when it matches exactly. */
+    internal fun violations(body: String): List<String> =
+        schema.validate(mapper.readTree(body)).map { it.message }.sorted()
 
     suspend fun handlePub(call: ApplicationCall) {
         if (!authorized(call.request.headers[HttpHeaders.Authorization], Config.LOCATION_USER, Config.LOCATION_PASSWORD)) {
@@ -69,19 +51,16 @@ object OwnTracks {
             call.respond(HttpStatusCode.Unauthorized)
             return
         }
-        val msg = runCatching { Json.parseToJsonElement(call.receiveText()).jsonObject }.getOrElse {
+        val body = call.receiveText()
+        val problems = runCatching { violations(body) }.getOrElse {
             KSLog.warning("OwnTracks: unreadable body: ${it.message}")
             call.respond(HttpStatusCode.BadRequest, "Invalid JSON")
             return
         }
+        if (problems.isNotEmpty()) return call.reject("contract changed: ${problems.joinToString("; ")}")
 
-        when (val type = msg.str("_type")) {
-            "location" -> {}
-            in KNOWN_TYPES -> return call.ok()
-            else -> return call.reject("unknown _type \"$type\"")
-        }
-
-        violations(msg).takeIf { it.isNotEmpty() }?.let { return call.reject("location contract changed: ${it.joinToString("; ")}") }
+        val msg = Json.parseToJsonElement(body).jsonObject
+        if (msg.str("_type") != "location") return call.ok()
         val ping = toPing(msg)!!
 
         val geo = Geocoder.lookup(ping.ghash, ping.lat, ping.lon) ?: run {

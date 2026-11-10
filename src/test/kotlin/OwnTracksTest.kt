@@ -49,14 +49,16 @@ class OwnTracksTest {
         assertNull(OwnTracks.toPing(Json.parseToJsonElement("""{"_type":"location","latitude":1,"longitude":2,"tst":1}""").jsonObject))
     }
 
-    private fun v(js: String) = OwnTracks.violations(Json.parseToJsonElement(js).jsonObject)
+    private fun v(js: String) = OwnTracks.violations(js)
 
     @Test
     fun `exact contract passes, any drift fails`() {
         assertEquals(emptyList(), v("""{"_type":"location","lat":1.5,"lon":2,"tst":1,"batt":80,"conn":"w","inregions":["home"],"_http":true}"""))
-        assertEquals(listOf("unknown key foo"), v("""{"_type":"location","lat":1,"lon":2,"tst":1,"foo":1}"""))
-        assertEquals(listOf("missing lon"), v("""{"_type":"location","lat":1,"tst":1}"""))
-        assertTrue(v("""{"_type":"location","lat":"1","lon":2,"tst":1}""").single().startsWith("lat is not num"))
-        assertTrue(v("""{"_type":"location","lat":1,"lon":2,"tst":1,"conn":5}""").single().startsWith("conn is not str"))
+        assertEquals(emptyList(), v("""{"_type":"lwt","tst":1}"""))
+        assertTrue(v("""{"_type":"location","lat":1,"lon":2,"tst":1,"foo":1}""").single().contains("foo"))
+        assertTrue(v("""{"_type":"location","lat":1,"tst":1}""").single().contains("lon"))
+        assertTrue(v("""{"_type":"location","lat":"1","lon":2,"tst":1}""").single().contains("lat"))
+        assertTrue(v("""{"_type":"location","lat":1,"lon":2,"tst":1,"conn":5}""").single().contains("conn"))
+        assertTrue(v("""{"_type":"something_new"}""").isNotEmpty())
     }
 }
