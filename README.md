@@ -89,4 +89,4 @@ docker run -e CHANEL_ID=your_channel_id \
 This project is licensed under the MIT License - see the LICENSE file for details.
 ## OwnTracks
 
-Point the OwnTracks app (HTTP mode) at `POST /pub` with the `LOCATION_USER`/`LOCATION_PASSWORD` Basic credentials. It replaces the OwnTracks Recorder: geohash-7, OpenCage reverse geocoding cached per cell in Postgres (`geo_cache`), time zone from OpenCage, reply `[]`, and 503 (phone retries) when geocoding or the save fails. `POST /location` (the recorder hook's flat JSON) still works.
+Point the OwnTracks app (HTTP mode) at `POST /pub` with the `LOCATION_USER`/`LOCATION_PASSWORD` Basic credentials. It replaces the OwnTracks Recorder: geohash-7, OpenCage reverse geocoding cached per cell in Postgres (`geo_cache`), time zone from OpenCage, reply `[]`, and 503 (phone retries) when geocoding or the save fails.

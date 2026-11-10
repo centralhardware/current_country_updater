@@ -4,6 +4,7 @@ import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class OwnTracksTest {
 
@@ -46,5 +47,16 @@ class OwnTracksTest {
     fun `location missing coordinates is not accepted`() {
         assertNull(OwnTracks.toPing(Json.parseToJsonElement("""{"_type":"location","lat":1,"tst":1}""").jsonObject))
         assertNull(OwnTracks.toPing(Json.parseToJsonElement("""{"_type":"location","latitude":1,"longitude":2,"tst":1}""").jsonObject))
+    }
+
+    private fun v(js: String) = OwnTracks.violations(Json.parseToJsonElement(js).jsonObject)
+
+    @Test
+    fun `exact contract passes, any drift fails`() {
+        assertEquals(emptyList(), v("""{"_type":"location","lat":1.5,"lon":2,"tst":1,"batt":80,"conn":"w","inregions":["home"],"_http":true}"""))
+        assertEquals(listOf("unknown key foo"), v("""{"_type":"location","lat":1,"lon":2,"tst":1,"foo":1}"""))
+        assertEquals(listOf("missing lon"), v("""{"_type":"location","lat":1,"tst":1}"""))
+        assertTrue(v("""{"_type":"location","lat":"1","lon":2,"tst":1}""").single().startsWith("lat is not num"))
+        assertTrue(v("""{"_type":"location","lat":1,"lon":2,"tst":1,"conn":5}""").single().startsWith("conn is not str"))
     }
 }
