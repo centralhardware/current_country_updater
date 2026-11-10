@@ -37,7 +37,10 @@ import java.time.Instant
 object OwnTracks {
 
     /** The contract, as a standard JSON Schema (draft 2020-12) in resources. */
-    private val schema: JsonSchema = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012)
+    private val schema: JsonSchema = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012) { b ->
+            // The official schema, vendored unmodified, is resolved from the classpath, never fetched.
+            b.schemaMappers { it.mapPrefix("https://owntracks.org/schemas/", "classpath:owntracks/") }
+        }
         .getSchema(OwnTracks::class.java.getResourceAsStream("/owntracks-message.schema.json"))
     private val mapper = ObjectMapper()
 

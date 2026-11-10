@@ -55,10 +55,10 @@ class OwnTracksTest {
     fun `exact contract passes, any drift fails`() {
         assertEquals(emptyList(), v("""{"_type":"location","lat":1.5,"lon":2,"tst":1,"batt":80,"conn":"w","inregions":["home"],"_http":true}"""))
         assertEquals(emptyList(), v("""{"_type":"lwt","tst":1}"""))
-        assertTrue(v("""{"_type":"location","lat":1,"lon":2,"tst":1,"foo":1}""").single().contains("foo"))
-        assertTrue(v("""{"_type":"location","lat":1,"tst":1}""").single().contains("lon"))
-        assertTrue(v("""{"_type":"location","lat":"1","lon":2,"tst":1}""").single().contains("lat"))
-        assertTrue(v("""{"_type":"location","lat":1,"lon":2,"tst":1,"conn":5}""").single().contains("conn"))
+        assertTrue(v("""{"_type":"location","lat":1,"lon":2,"tst":1,"foo":1}""").any { it.contains("foo") })
+        assertTrue(v("""{"_type":"location","lat":1,"tst":1}""").any { it.contains("lon") })
+        assertTrue(v("""{"_type":"location","lat":"1","lon":2,"tst":1}""").any { it.contains("lat") })
+        assertTrue(v("""{"_type":"location","lat":1,"lon":2,"tst":1,"conn":5}""").any { it.contains("conn") })
         assertTrue(v("""{"_type":"something_new"}""").isNotEmpty())
     }
 }
