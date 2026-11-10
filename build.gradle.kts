@@ -46,7 +46,7 @@ dependencies {
 
     implementation("org.flywaydb:flyway-core:13.12.1")
     implementation("org.flywaydb:flyway-database-clickhouse:10.26.2")
-    implementation("org.flywaydb:flyway-database-postgresql:13.12.0")
+    implementation("org.flywaydb:flyway-database-postgresql:13.12.1")
 
     testImplementation(kotlin("test"))
     testImplementation("org.junit.jupiter:junit-jupiter-api:6.1.3")
