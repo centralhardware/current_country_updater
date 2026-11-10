@@ -5,6 +5,7 @@ import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import kotlinx.serialization.json.*
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.networknt.schema.JsonSchema
@@ -49,7 +50,7 @@ object OwnTracks {
         schema.validate(mapper.readTree(body)).map { it.message }.sorted()
 
     suspend fun handlePub(call: ApplicationCall) {
-        if (!authorized(call.request.headers[HttpHeaders.Authorization], Config.LOCATION_USER, Config.LOCATION_PASSWORD)) {
+        if (!authorized(call.request.headers[HttpHeaders.Authorization], IngestConfig.LOCATION_USER, IngestConfig.LOCATION_PASSWORD)) {
             call.response.headers.append(HttpHeaders.WWWAuthenticate, "Basic realm=\"owntracks\"")
             call.respond(HttpStatusCode.Unauthorized)
             return
@@ -72,7 +73,7 @@ object OwnTracks {
             return
         }
 
-        WebService.save(ping.toRequest(geo))
+        LocationStore.save(ping.toRequest(geo))
             .onSuccess { call.ok() }
             .onFailure { call.respond(HttpStatusCode.ServiceUnavailable, "Not saved: ${it.message}") }
     }
@@ -124,4 +125,12 @@ object OwnTracks {
     private fun JsonObject.str(k: String) = (this[k] as? JsonPrimitive)?.contentOrNull
     private fun JsonObject.num(k: String) = (this[k] as? JsonPrimitive)?.doubleOrNull
     private fun JsonObject.int(k: String) = num(k)?.toInt() ?: 0
+}
+
+/** Mounts `POST /pub` on the host app's routing. */
+fun Routing.ownTracks() {
+    if (IngestConfig.LOCATION_PASSWORD.isNullOrEmpty()) {
+        KSLog.warning("LOCATION_PASSWORD not set: POST /pub accepts unauthenticated pings")
+    }
+    post("/pub") { OwnTracks.handlePub(call) }
 }

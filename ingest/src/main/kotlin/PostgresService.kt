@@ -9,7 +9,7 @@ object PostgresService {
 
     private fun initialize(): DataSource {
         val hikari = HikariConfig().apply {
-            jdbcUrl = Config.DATABASE_URL
+            jdbcUrl = IngestConfig.DATABASE_URL
             maximumPoolSize = 2
             driverClassName = "org.postgresql.Driver"
         }
