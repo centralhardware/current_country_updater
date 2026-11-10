@@ -19,5 +19,5 @@ dependencies {
     implementation("io.ktor:ktor-client-core:$ktorVersion")
     implementation("io.ktor:ktor-client-cio:$ktorVersion")
     api("org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0")
-    implementation("com.networknt:json-schema-validator:1.5.6")
+    implementation("com.networknt:json-schema-validator:3.0.9")
 }
