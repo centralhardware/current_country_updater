@@ -4,6 +4,7 @@ import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class OwnTracksTest {
 
@@ -46,5 +47,18 @@ class OwnTracksTest {
     fun `location missing coordinates is not accepted`() {
         assertNull(OwnTracks.toPing(Json.parseToJsonElement("""{"_type":"location","lat":1,"tst":1}""").jsonObject))
         assertNull(OwnTracks.toPing(Json.parseToJsonElement("""{"_type":"location","latitude":1,"longitude":2,"tst":1}""").jsonObject))
+    }
+
+    private fun v(js: String) = OwnTracks.violations(js)
+
+    @Test
+    fun `exact contract passes, any drift fails`() {
+        assertEquals(emptyList(), v("""{"_type":"location","lat":1.5,"lon":2,"tst":1,"batt":80,"conn":"w","inregions":["home"],"_http":true}"""))
+        assertEquals(emptyList(), v("""{"_type":"lwt","tst":1}"""))
+        assertTrue(v("""{"_type":"location","lat":1,"lon":2,"tst":1,"foo":1}""").any { it.contains("foo") })
+        assertTrue(v("""{"_type":"location","lat":1,"tst":1}""").any { it.contains("lon") })
+        assertTrue(v("""{"_type":"location","lat":"1","lon":2,"tst":1}""").any { it.contains("lat") })
+        assertTrue(v("""{"_type":"location","lat":1,"lon":2,"tst":1,"conn":5}""").any { it.contains("conn") })
+        assertTrue(v("""{"_type":"something_new"}""").isNotEmpty())
     }
 }

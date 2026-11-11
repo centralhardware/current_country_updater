@@ -43,6 +43,13 @@ CREATE TABLE country_days_tracker_bot.country_days_tracker (
 ORDER BY date_time;
 ```
 
+## Modules
+
+Two Gradle modules, one process and one container:
+
+- `ingest` -- OwnTracks intake: `POST /pub`, the JSON Schema contract, OpenCage reverse geocoding, and the ClickHouse/Postgres storage with its migrations. It has no Telegram dependency.
+- `bot` -- the Telegram bot (channel title, commands, `/map`) and the calendar feed. It hosts the ingest routes on its HTTP server and builds the image (`./gradlew jibDockerBuild`).
+
 ## Building
 
 ### Using Gradle
@@ -89,4 +96,4 @@ docker run -e CHANEL_ID=your_channel_id \
 This project is licensed under the MIT License - see the LICENSE file for details.
 ## OwnTracks
 
-Point the OwnTracks app (HTTP mode) at `POST /pub` with the `LOCATION_USER`/`LOCATION_PASSWORD` Basic credentials. It replaces the OwnTracks Recorder: geohash-7, OpenCage reverse geocoding cached per cell in Postgres (`geo_cache`), time zone from OpenCage, reply `[]`, and 503 (phone retries) when geocoding or the save fails. `POST /location` (the recorder hook's flat JSON) still works.
+Point the OwnTracks app (HTTP mode) at `POST /pub` with the `LOCATION_USER`/`LOCATION_PASSWORD` Basic credentials. It replaces the OwnTracks Recorder: geohash-7, OpenCage reverse geocoding cached per cell in Postgres (`geo_cache`), time zone from OpenCage, reply `[]`, and 503 (phone retries) when geocoding or the save fails.

@@ -1,16 +1,6 @@
 import dev.inmo.kslog.common.KSLog
 import dev.inmo.kslog.common.error
 import dev.inmo.kslog.common.info
-import dev.inmo.kslog.common.warning
-import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.*
-import io.ktor.server.application.*
-import io.ktor.server.engine.*
-import io.ktor.server.netty.*
-import io.ktor.server.plugins.contentnegotiation.*
-import io.ktor.server.request.*
-import io.ktor.server.response.*
-import io.ktor.server.routing.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -21,7 +11,6 @@ import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-import kotlinx.serialization.json.Json
 import java.security.MessageDigest
 import java.time.Instant
 import java.time.ZoneId
@@ -57,9 +46,12 @@ data class LocationRequest(
     val bs: Int? = null
 )
 
-private val json = Json { ignoreUnknownKeys = true }
 
-object WebService {
+/**
+ * Where a location ping ends up: the ClickHouse row, plus the in-process
+ * stream the bot's /map live location follows. Nothing here knows Telegram.
+ */
+object LocationStore {
 
     private val _pings = MutableSharedFlow<LocationRequest>(extraBufferCapacity = 16)
 
@@ -70,55 +62,9 @@ object WebService {
     @Volatile
     private var lastEmitted: Instant = Instant.EPOCH
 
-    fun start(port: Int = 80): EmbeddedServer<NettyApplicationEngine, NettyApplicationEngine.Configuration> {
-        KSLog.info("Starting web service on port $port")
-        if (Config.LOCATION_PASSWORD.isNullOrEmpty()) {
-            KSLog.warning("LOCATION_PASSWORD not set: POST /location accepts unauthenticated pings")
-        }
-
-        return embeddedServer(Netty, port = port) {
-            install(ContentNegotiation) {
-                json(json)
-            }
-
-            routing {
-                post("/location") {
-                    handleLocationUpdate(call)
-                }
-                // The OwnTracks app's own HTTP mode, formerly served by the OwnTracks Recorder.
-                post("/pub") {
-                    OwnTracks.handlePub(call)
-                }
-                get("/calendar/${Config.CALENDAR_SECRET}/calendar.ics") {
-                    handleCalendar(call)
-                }
-            }
-        }.start(wait = false)
-    }
-
-    private suspend fun handleLocationUpdate(call: ApplicationCall) {
-        if (!authorized(call.request.headers[HttpHeaders.Authorization], Config.LOCATION_USER, Config.LOCATION_PASSWORD)) {
-            call.response.headers.append(HttpHeaders.WWWAuthenticate, "Basic realm=\"location\"")
-            call.respond(HttpStatusCode.Unauthorized)
-            return
-        }
-        val bodyString = call.receiveText()
-        val body = try {
-            json.decodeFromString<LocationRequest>(bodyString)
-        } catch (e: Exception) {
-            KSLog.warning("Failed to parse location update: ${e.message}")
-            call.respond(HttpStatusCode.BadRequest, "Invalid request: ${e.message}")
-            return
-        }
-
-        // Answer only once the row is stored: a 5xx makes the phone keep the
-        // ping and send it again, where an early 200 would drop it for good.
-        save(body).onSuccess {
-            call.respond(HttpStatusCode.OK)
-        }.onFailure { error ->
-            call.respond(HttpStatusCode.ServiceUnavailable, "Not saved: ${error.message}")
-        }
-    }
+    /** Maps a geocoded locality to the stored one; the bot plugs its /addoverride table in here. */
+    @Volatile
+    var localityResolver: (String) -> String = { it }
 
     /** Stores one ping and feeds the /map live location; the failure is logged here. */
     suspend fun save(body: LocationRequest): Result<Unit> {
@@ -134,7 +80,7 @@ object WebService {
         val saved = withContext(Dispatchers.IO) {
             runCatching {
                 val zone = body.timezone.toZone()
-                DatabaseService.save(
+                ClickHouse.insert(
                     body.timestamp,
                     zone.rules.getOffset(body.timestamp).totalSeconds,
                     body.latitude,
@@ -146,7 +92,7 @@ object WebService {
                     body.acc,
                     body.vac,
                     body.conn,
-                    LocalityOverrideManager.resolve(body.locality),
+                    localityResolver(body.locality),
                     body.ghash,
                     body.p,
                     body.addr,
@@ -167,10 +113,6 @@ object WebService {
         }.onFailure { error ->
             KSLog.error("Failed to save location update at ${body.timestamp}", error)
         }
-    }
-
-    private suspend fun handleCalendar(call: ApplicationCall) {
-        call.respondText(CalendarService.buildCalendar(), ContentType("text", "calendar"))
     }
 
     private fun String.toCountry() = Locale.of("en", this).displayCountry

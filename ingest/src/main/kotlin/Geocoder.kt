@@ -44,7 +44,7 @@ object Geocoder {
     }
 
     private suspend fun fetch(lat: Double, lon: Double): Geo? {
-        val key = Config.OPENCAGE_KEY ?: run {
+        val key = IngestConfig.OPENCAGE_KEY ?: run {
             KSLog.warning("OPENCAGE_KEY not set: cannot reverse-geocode")
             return null
         }

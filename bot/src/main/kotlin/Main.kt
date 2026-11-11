@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(Warning::class, RiskFeature::class)
 suspend fun main() {
+    LocationStore.localityResolver = LocalityOverrideManager::resolve
     WebService.start(80)
 
     longPolling ("CurrentCountryUpdater") {

@@ -1,82 +1,26 @@
 plugins {
-    kotlin("jvm") version "2.4.21"
-    kotlin("plugin.serialization") version "2.4.21"
-    id("com.google.cloud.tools.jib") version "3.5.4"
+    kotlin("jvm") version "2.4.21" apply false
+    kotlin("plugin.serialization") version "2.4.21" apply false
+    id("com.google.cloud.tools.jib") version "3.5.4" apply false
 }
 
-group = "me.centralhardware.telegram"
-version = "1.0-SNAPSHOT"
+subprojects {
+    apply(plugin = "org.jetbrains.kotlin.jvm")
+    apply(plugin = "org.jetbrains.kotlin.plugin.serialization")
 
-repositories {
-    mavenCentral()
-    maven("https://jitpack.io")
-}
+    group = "me.centralhardware.telegram"
+    version = "1.0-SNAPSHOT"
 
-val ktorVersion = "3.6.1"
-val clickhouseVersion = "0.11.1"
-
-dependencies {
-    implementation("com.github.centralhardware:ktgbotapi-commons:62e73250")
-
-    implementation("com.clickhouse:clickhouse-jdbc:$clickhouseVersion")
-    implementation("com.clickhouse:clickhouse-http-client:$clickhouseVersion")
-    implementation("com.github.seratch:kotliquery:1.9.1")
-
-    implementation("org.postgresql:postgresql:42.7.14")
-    implementation("com.zaxxer:HikariCP:7.1.0")
-
-    implementation("dev.inmo:krontab:3.1.0")
-
-    implementation("com.neovisionaries:nv-i18n:1.29")
-
-    implementation("net.fellbaum:jemoji:2.1.0")
-
-    implementation("io.ktor:ktor-client-core:$ktorVersion")
-    implementation("io.ktor:ktor-client-cio:$ktorVersion")
-    implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
-    implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
-
-    implementation("io.ktor:ktor-server-netty:$ktorVersion")
-    implementation("io.ktor:ktor-server-core:$ktorVersion")
-    implementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
-
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0")
-
-    implementation("org.mnode.ical4j:ical4j:4.4.0")
-
-    implementation("org.flywaydb:flyway-core:13.12.1")
-    implementation("org.flywaydb:flyway-database-clickhouse:10.26.2")
-    implementation("org.flywaydb:flyway-database-postgresql:13.12.1")
-
-    testImplementation(kotlin("test"))
-    testImplementation("org.junit.jupiter:junit-jupiter-api:6.1.3")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:6.1.3")
-}
-
-jib {
-    from {
-        image = System.getenv("JIB_FROM_IMAGE") ?: "eclipse-temurin:24-jre"
+    repositories {
+        mavenCentral()
+        maven("https://jitpack.io")
     }
-    to {
-    }
-    container {
-        mainClass = "MainKt"
-        // /health, served by ktgbotapi-commons
-        ports = listOf("8081")
-        jvmFlags = listOf("-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=75.0")
-        creationTime = "USE_CURRENT_TIMESTAMP"
-        labels = mapOf(
-            "org.opencontainers.image.source" to (System.getenv("GITHUB_SERVER_URL")?.let { server ->
-                val repo = System.getenv("GITHUB_REPOSITORY")
-                if (repo != null) "$server/$repo" else ""
-            } ?: ""),
-            "org.opencontainers.image.revision" to (System.getenv("GITHUB_SHA") ?: "")
-        )
-        user = "10001"
-    }
-}
 
+    dependencies {
+        "testImplementation"(kotlin("test"))
+        "testImplementation"("org.junit.jupiter:junit-jupiter-api:6.1.3")
+        "testRuntimeOnly"("org.junit.jupiter:junit-jupiter-engine:6.1.3")
+    }
 
-tasks.test {
-    useJUnitPlatform()
+    tasks.withType<Test> { useJUnitPlatform() }
 }
