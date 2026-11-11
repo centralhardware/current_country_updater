@@ -7,10 +7,10 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.serialization.json.*
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.networknt.schema.JsonSchema
-import com.networknt.schema.JsonSchemaFactory
-import com.networknt.schema.SpecVersion
+import com.networknt.schema.InputFormat
+import com.networknt.schema.Schema
+import com.networknt.schema.SchemaRegistry
+import com.networknt.schema.SpecificationVersion
 import java.time.Instant
 
 /**
@@ -38,16 +38,15 @@ import java.time.Instant
 object OwnTracks {
 
     /** The contract, as a standard JSON Schema (draft 2020-12) in resources. */
-    private val schema: JsonSchema = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012) { b ->
+    private val schema: Schema = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12) { b ->
             // The official schema, vendored unmodified, is resolved from the classpath, never fetched.
-            b.schemaMappers { it.mapPrefix("https://owntracks.org/schemas/", "classpath:owntracks/") }
+            b.schemaIdResolvers { it.mapPrefix("https://owntracks.org/schemas/", "classpath:owntracks/") }
         }
         .getSchema(OwnTracks::class.java.getResourceAsStream("/owntracks-message.schema.json"))
-    private val mapper = ObjectMapper()
 
     /** Every way [body] differs from the schema; empty when it matches exactly. */
     internal fun violations(body: String): List<String> =
-        schema.validate(mapper.readTree(body)).map { it.message }.sorted()
+        schema.validate(body, InputFormat.JSON).map { it.toString() }.sorted()
 
     suspend fun handlePub(call: ApplicationCall) {
         if (!authorized(call.request.headers[HttpHeaders.Authorization], IngestConfig.LOCATION_USER, IngestConfig.LOCATION_PASSWORD)) {
