@@ -1,7 +1,7 @@
 // OwnTracks intake: POST /pub, the JSON Schema contract, reverse geocoding,
 // and the storage it writes to. No Telegram here.
 val ktorVersion = "3.6.1"
-val clickhouseVersion = "0.11.0"
+val clickhouseVersion = "0.11.1"
 
 dependencies {
     api("dev.inmo:kslog:2.1.0")

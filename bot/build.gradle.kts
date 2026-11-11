@@ -8,7 +8,7 @@ val ktorVersion = "3.6.1"
 
 dependencies {
     implementation(project(":ingest"))
-    implementation("com.github.centralhardware:ktgbotapi-commons:2d78d488")
+    implementation("com.github.centralhardware:ktgbotapi-commons:62e73250")
 
     implementation("dev.inmo:krontab:3.1.0")
     implementation("com.neovisionaries:nv-i18n:1.29")
