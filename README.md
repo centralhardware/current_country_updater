@@ -27,6 +27,7 @@ The application uses environment variables for configuration:
 | `MAP_GUEST_ID` | Telegram user id allowed to run /map only via guest mode in their DM with the owner |
 | `CHANEL_TITLE_PATTERN` | The pattern for the channel title (e.g., "Travel Blog %s") |
 | `CLICKHOUSE_URL` | The JDBC URL for the ClickHouse database |
+| `CALENDAR_SECRET` | Path secret of the calendar feed (web server) |
 | `OPENCAGE_KEY` | OpenCage key for reverse geocoding OwnTracks pings on `POST /pub` (`opencage:` prefix optional) |
 
 ## Database Schema
@@ -45,10 +46,12 @@ ORDER BY date_time;
 
 ## Modules
 
-Two Gradle modules, one process and one container:
+Two Gradle modules, two processes, two containers:
 
-- `ingest` -- OwnTracks intake: `POST /pub`, the JSON Schema contract, OpenCage reverse geocoding, and the ClickHouse/Postgres storage with its migrations. It has no Telegram dependency.
-- `bot` -- the Telegram bot (channel title, commands, `/map`) and the calendar feed. It hosts the ingest routes on its HTTP server and builds the image (`./gradlew jibDockerBuild`).
+- `ingest` -- the web server (`ghcr.io/<repo>-web`, main class `WebMainKt`, port 80): OwnTracks `POST /pub`, the JSON Schema contract, OpenCage reverse geocoding, the calendar feed, `/health`, and the ClickHouse/Postgres storage with its migrations. It reads locality overrides from Postgres (cached for a minute). It has no Telegram dependency. Needs `CLICKHOUSE_*`, `DATABASE_URL`, `LOCATION_USER`/`LOCATION_PASSWORD`, `OPENCAGE_KEY`, `CALENDAR_SECRET`.
+- `bot` -- the Telegram bot (`ghcr.io/<repo>`): channel title, commands, `/map`. It uses `ingest` only as a library for storage. The `/map` live location polls ClickHouse for new pings every 15 s. Needs `CLICKHOUSE_*`, `DATABASE_URL`, the Telegram token and the `CHANEL_*`/`MAP_*` variables.
+
+Build the images with `./gradlew :bot:jibDockerBuild` and `./gradlew :ingest:jibDockerBuild`. CI pushes both and triggers `COOLIFY_DEPLOY_HOOK_URL` (bot) and `COOLIFY_WEB_DEPLOY_HOOK_URL` (web).
 
 ## Building
 

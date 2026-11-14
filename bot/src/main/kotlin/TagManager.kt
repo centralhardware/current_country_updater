@@ -50,9 +50,7 @@ object TagManager {
         }
     }
 
-    fun sanitizeForHashtag(value: String): String {
-        return value.replace(" ", "_").replace(Regex("[^\\p{L}\\p{N}_]"), "")
-    }
+    fun sanitizeForHashtag(value: String): String = LocalityOverrides.sanitizeForHashtag(value)
 
     private fun normalizeTag(name: String): String? {
         val tag = sanitizeForHashtag(name.removePrefix("#"))

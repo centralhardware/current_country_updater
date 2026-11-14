@@ -57,12 +57,11 @@ jobs:
 
           (IFS=,; echo "tags=${TAGS[*]}") >> "$GITHUB_OUTPUT"
 
-      - name: Build image with Jib into the local Docker daemon
+      - name: Build both images with Jib into the local Docker daemon
         if: github.event_name != 'pull_request'
         run: |
-          ./gradlew --no-daemon \
-            -Djib.to.image="localhost/jib-build:latest" \
-            jibDockerBuild
+          ./gradlew --no-daemon :bot:jibDockerBuild -Djib.to.image="localhost/jib-bot:latest"
+          ./gradlew --no-daemon :ingest:jibDockerBuild -Djib.to.image="localhost/jib-web:latest"
 
       - name: Add HEALTHCHECK layer and push
         if: github.event_name != 'pull_request'
@@ -75,36 +74,37 @@ jobs:
         run: |
           echo "$REGISTRY_PASSWORD" | docker login ghcr.io -u "$REGISTRY_USERNAME" --password-stdin
           IFS=',' read -ra TAG_LIST <<< "$TAGS"
-          TAG_ARGS=()
-          for tag in "${TAG_LIST[@]}"; do TAG_ARGS+=(-t "$IMAGE:$tag"); done
-          # Jib cannot emit a HEALTHCHECK instruction, so it is added on top of the Jib image.
-          docker build --build-arg BASE_IMAGE=localhost/jib-build:latest "${TAG_ARGS[@]}" - < Dockerfile
-          for tag in "${TAG_LIST[@]}"; do docker push "$IMAGE:$tag"; done
+          # The bot keeps the repository's image name; the web server is <image>-web.
+          for pair in "bot:$IMAGE" "web:$IMAGE-web"; do
+            src="${pair%%:*}"; dst="${pair#*:}"
+            TAG_ARGS=()
+            for tag in "${TAG_LIST[@]}"; do TAG_ARGS+=(-t "$dst:$tag"); done
+            # Jib cannot emit a HEALTHCHECK instruction, so it is added on top of the Jib image.
+            docker build --build-arg BASE_IMAGE=localhost/jib-$src:latest "${TAG_ARGS[@]}" - < Dockerfile
+            for tag in "${TAG_LIST[@]}"; do docker push "$dst:$tag"; done
+          done
 
-      - name: Trigger Coolify deployment
+      - name: Trigger Coolify deployments
         if: github.event_name != 'pull_request'
         env:
           COOLIFY_DEPLOY_HOOK_URL: ${{ secrets.COOLIFY_DEPLOY_HOOK_URL }}
+          COOLIFY_WEB_DEPLOY_HOOK_URL: ${{ secrets.COOLIFY_WEB_DEPLOY_HOOK_URL }}
           COOLIFY_DEPLOY_BEARER_TOKEN: ${{ secrets.COOLIFY_DEPLOY_BEARER_TOKEN }}
         shell: bash
         run: |
-          if [[ -z "$COOLIFY_DEPLOY_HOOK_URL" ]]; then
-            echo "Coolify deploy hook URL is not set. Skip Coolify deploy. Provide secrets.COOLIFY_DEPLOY_HOOK_URL to enable."
-            exit 0
-          fi
-          echo "Triggering Coolify deployment via webhook..."
           AUTH_HEADER=()
           if [[ -n "$COOLIFY_DEPLOY_BEARER_TOKEN" ]]; then
-            echo "Using Bearer authorization for Coolify trigger."
             AUTH_HEADER=(-H "Authorization: Bearer $COOLIFY_DEPLOY_BEARER_TOKEN")
           fi
-          http_code=$(curl -fsS -o /tmp/coolify_resp.txt -w "%{http_code}" -X POST "${AUTH_HEADER[@]}" "$COOLIFY_DEPLOY_HOOK_URL") || true
-          echo "Coolify response (HTTP $http_code):"
-          cat /tmp/coolify_resp.txt || true
-          if [[ "$http_code" -ge 200 && "$http_code" -lt 300 ]]; then
-            echo "Coolify deploy trigger succeeded."
-            exit 0
-          else
-            echo "Coolify deploy trigger failed with HTTP $http_code" >&2
-            exit 1
-          fi
+          failed=0
+          for name in COOLIFY_DEPLOY_HOOK_URL COOLIFY_WEB_DEPLOY_HOOK_URL; do
+            url="${!name}"
+            if [[ -z "$url" ]]; then
+              echo "$name is not set, skipping."
+              continue
+            fi
+            http_code=$(curl -fsS -o /tmp/coolify_resp.txt -w "%{http_code}" -X POST "${AUTH_HEADER[@]}" "$url") || true
+            echo "$name: HTTP $http_code"; cat /tmp/coolify_resp.txt || true; echo
+            if [[ "$http_code" -lt 200 || "$http_code" -ge 300 ]]; then failed=1; fi
+          done
+          exit $failed

@@ -1,4 +1,4 @@
-/** Environment for the ingest side: storage, /pub credentials, geocoding. */
+/** Environment for the web server: storage, /pub credentials, geocoding, the calendar feed. */
 object IngestConfig {
 
     val CLICKHOUSE_URL: String = System.getenv("CLICKHOUSE_URL")
@@ -14,4 +14,9 @@ object IngestConfig {
 
     // OpenCage key for POST /pub reverse geocoding; the recorder's "opencage:KEY" form is accepted.
     val OPENCAGE_KEY: String? = System.getenv("OPENCAGE_KEY")?.removePrefix("opencage:")?.takeIf { it.isNotBlank() }
+
+    // Path secret of the public calendar feed.
+    val CALENDAR_SECRET: String = System.getenv("CALENDAR_SECRET")
+
+    val PORT: Int = System.getenv("PORT")?.toIntOrNull() ?: 80
 }

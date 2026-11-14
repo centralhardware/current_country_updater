@@ -1,5 +1,5 @@
-// The Telegram bot: channel title, commands, /map, the calendar feed. Hosts the
-// ingest module's /pub in the same process and container.
+// The Telegram bot: channel title, commands, /map. Its own container; it uses
+// the ingest module only as a library for storage access.
 plugins {
     id("com.google.cloud.tools.jib")
 }
@@ -11,15 +11,9 @@ dependencies {
     implementation("com.github.centralhardware:ktgbotapi-commons:6018de0c")
 
     implementation("dev.inmo:krontab:3.1.0")
-    implementation("com.neovisionaries:nv-i18n:1.29")
-    implementation("net.fellbaum:jemoji:2.1.0")
 
     implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
-    implementation("io.ktor:ktor-server-netty:$ktorVersion")
-    implementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
-
-    implementation("org.mnode.ical4j:ical4j:4.4.0")
 }
 
 jib {
