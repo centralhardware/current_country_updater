@@ -4,8 +4,6 @@ object Config {
     val CHANNEL_ID: Long = System.getenv("CHANEL_ID").toLong()
     val CHANEL_TITLE_PATTERN: String = System.getenv("CHANEL_TITLE_PATTERN")
 
-    val CALENDAR_SECRET: String = System.getenv("CALENDAR_SECRET")
-
     // May run /map anywhere, directly or via guest mode.
     val MAP_OWNER_ID: Long = System.getenv("MAP_OWNER_ID").toLong()
 

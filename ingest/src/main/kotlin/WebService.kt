@@ -9,7 +9,7 @@ import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
-/** The container's one HTTP server: the ingest module's /pub plus the bot's calendar feed. */
+/** The web server: OwnTracks /pub, the calendar feed, and /health for the container probe. */
 object WebService {
 
     fun start(port: Int = 80): EmbeddedServer<NettyApplicationEngine, NettyApplicationEngine.Configuration> {
@@ -18,10 +18,11 @@ object WebService {
             install(ContentNegotiation) { json() }
             routing {
                 ownTracks()
-                get("/calendar/${Config.CALENDAR_SECRET}/calendar.ics") {
+                get("/health") { call.respondText("OK") }
+                get("/calendar/${IngestConfig.CALENDAR_SECRET}/calendar.ics") {
                     call.respondText(CalendarService.buildCalendar(), ContentType("text", "calendar"))
                 }
             }
-        }.start(wait = false)
+        }.start(wait = true)
     }
 }

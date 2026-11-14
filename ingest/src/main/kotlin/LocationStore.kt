@@ -2,8 +2,6 @@ import dev.inmo.kslog.common.KSLog
 import dev.inmo.kslog.common.error
 import dev.inmo.kslog.common.info
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
@@ -48,25 +46,16 @@ data class LocationRequest(
 
 
 /**
- * Where a location ping ends up: the ClickHouse row, plus the in-process
- * stream the bot's /map live location follows. Nothing here knows Telegram.
+ * Where a location ping ends up: the ClickHouse row. The bot, a separate
+ * process, follows new rows from there. Nothing here knows Telegram.
  */
 object LocationStore {
-
-    private val _pings = MutableSharedFlow<LocationRequest>(extraBufferCapacity = 16)
-
-    /** Every saved ping newer than the last one -- feeds the /map live location. */
-    val pings = _pings.asSharedFlow()
-
-    /** The newest ping pushed to [pings]; a replayed backlog must not drag the pin back. */
-    @Volatile
-    private var lastEmitted: Instant = Instant.EPOCH
 
     /** Maps a geocoded locality to the stored one; the bot plugs its /addoverride table in here. */
     @Volatile
     var localityResolver: (String) -> String = { it }
 
-    /** Stores one ping and feeds the /map live location; the failure is logged here. */
+    /** Stores one ping; the failure is logged here. */
     suspend fun save(body: LocationRequest): Result<Unit> {
         KSLog.info("Location update at ${body.timestamp} (${body.country}, acc ${body.acc} m)")
 
@@ -104,13 +93,7 @@ object LocationStore {
             }
         }
 
-        return saved.onSuccess {
-            // Only once stored, so a retried ping moves the pin once.
-            if (body.timestamp.isAfter(lastEmitted)) {
-                lastEmitted = body.timestamp
-                _pings.tryEmit(body)
-            }
-        }.onFailure { error ->
+        return saved.onFailure { error ->
             KSLog.error("Failed to save location update at ${body.timestamp}", error)
         }
     }

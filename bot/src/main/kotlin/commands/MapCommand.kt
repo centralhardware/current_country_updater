@@ -2,7 +2,6 @@ package commands
 
 import Config
 import DatabaseService
-import LocationStore
 import dev.inmo.tgbotapi.extensions.api.EditLiveLocationInfo
 import dev.inmo.tgbotapi.extensions.api.handleLiveLocation
 import dev.inmo.tgbotapi.extensions.api.deleteMessage
@@ -17,11 +16,12 @@ import dev.inmo.tgbotapi.types.InlineQueries.InlineQueryResult.InlineQueryResult
 import dev.inmo.tgbotapi.types.InlineQueryId
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.seconds
 
 private val LIVE_PERIOD = 8.hours
 
@@ -32,28 +32,28 @@ private val liveJobs = ConcurrentHashMap<Long, Job>()
 private val liveMessages = ConcurrentHashMap<Long, MessageId>()
 
 
-private fun liveLocations(lat: Double, lon: Double): Flow<EditLiveLocationInfo> =
-    LocationStore.pings
-        .map { ping ->
-            EditLiveLocationInfo(
-                latitude = ping.latitude.toDouble(),
-                longitude = ping.longitude.toDouble(),
-                horizontalAccuracy = ping.acc.takeIf { it in 1..1500 }?.toFloat(),
-                heading = ping.cog.takeIf { ping.vel > 0 && it in 1..360 },
-            )
-        }
-        .onStart {
-            emit(
-                EditLiveLocationInfo(
-                    latitude = lat,
-                    longitude = lon,
-                )
-            )
-        }
+private val POLL_INTERVAL = 15.seconds
+
+/**
+ * The web server is a separate process, so new pings are picked up from
+ * ClickHouse: the newest row, polled, emitted only when it moves forward in
+ * time (a late backlog must not drag the pin back).
+ */
+private fun liveLocations(start: DatabaseService.Location): Flow<EditLiveLocationInfo> = flow {
+    var last = start
+    emit(EditLiveLocationInfo(latitude = start.latitude.toDouble(), longitude = start.longitude.toDouble()))
+    while (true) {
+        delay(POLL_INTERVAL)
+        val next = runCatching { DatabaseService.getLastLocation() }.getOrNull() ?: continue
+        if (!next.ts.isAfter(last.ts)) continue
+        last = next
+        emit(EditLiveLocationInfo(latitude = next.latitude.toDouble(), longitude = next.longitude.toDouble()))
+    }
+}
 
 /**
  * Shares the current location as a Telegram live location, moved on every
- * incoming ping for [LIVE_PERIOD] instead of a one-off static pin.
+ * new ping for [LIVE_PERIOD] instead of a one-off static pin.
  */
 fun BehaviourContext.registerMapCommand() {
     onCommand("map", initialFilter = fromOwner) { message ->
@@ -67,7 +67,7 @@ fun BehaviourContext.registerMapCommand() {
         liveJobs.remove(chatId.chatId.long)?.cancel()
         liveMessages.remove(chatId.chatId.long)?.let { runCatching { deleteMessage(chatId, it) } }
 
-        val locations = liveLocations(lastLocation.latitude.toDouble(), lastLocation.longitude.toDouble())
+        val locations = liveLocations(lastLocation)
 
         val job = this@registerMapCommand.launch {
             handleLiveLocation(
