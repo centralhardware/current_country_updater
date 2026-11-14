@@ -9,6 +9,8 @@ val ktorVersion = "3.6.1"
 dependencies {
     implementation(project(":ingest"))
     implementation("com.github.centralhardware:ktgbotapi-commons:62e73250")
+    // tgbotapi 37 defaults to the ktor Java engine; ktgbotapi-commons excludes it
+    runtimeOnly("io.ktor:ktor-client-java:$ktorVersion")
 
     implementation("dev.inmo:krontab:3.1.0")
     implementation("com.neovisionaries:nv-i18n:1.29")
