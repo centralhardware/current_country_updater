@@ -157,7 +157,6 @@ object ChannelManager {
     /** The public place he is at right now, or null: stale ping, no named place, near home or home unknown. */
     private fun currentPlace(location: DatabaseService.Location): String? {
         if (location.ghash.isEmpty() || Duration.between(location.ts, Instant.now()) > PLACE_FRESH_FOR) return null
-        val place = Geocoder.place(location.ghash) ?: return null
         val homes = runCatching { DatabaseService.getSleepPlaces() }
             .onFailure { KSLog.warning("Home lookup failed, leaving the place out: ${it.message}") }
             .getOrElse { return null }
@@ -166,7 +165,7 @@ object ChannelManager {
         val lat = location.latitude.toDouble()
         val lon = location.longitude.toDouble()
         if (homes.any { (hLat, hLon) -> distanceMeters(hLat, hLon, lat, lon) < HOME_RADIUS_METERS }) return null
-        return place
+        return PlaceService.describe(location.ghash, lat, lon, location.acc)
     }
 }
 

@@ -34,6 +34,7 @@ object DatabaseService {
         val locality: String,
         val ts: Instant,
         val ghash: String = "",
+        val acc: Int? = null,
     )
 
     fun getLastLocation(): Location? {
@@ -41,7 +42,7 @@ object DatabaseService {
             queryOf(
                 // language=SQL
                 """
-                    SELECT latitude, longitude, country, locality, toUnixTimestamp(ts) AS ts_epoch, ghash
+                    SELECT latitude, longitude, country, locality, toUnixTimestamp(ts) AS ts_epoch, ghash, acc
                     FROM country_days_tracker_bot.country_days_tracker
                     -- ts, not date_time: local wall time runs backwards on a
                     -- westward flight, and ts is the table's sorting key.
@@ -56,6 +57,7 @@ object DatabaseService {
                     row.string("locality"),
                     Instant.ofEpochSecond(row.long("ts_epoch")),
                     row.string("ghash"),
+                    row.intOrNull("acc"),
                 )
             }.asSingle
         )

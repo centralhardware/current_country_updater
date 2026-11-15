@@ -27,6 +27,7 @@ The application uses environment variables for configuration:
 | `MAP_GUEST_ID` | Telegram user id allowed to run /map only via guest mode in their DM with the owner |
 | `CHANEL_TITLE_PATTERN` | The pattern for the channel title (e.g., "Travel Blog %s") |
 | `CLICKHOUSE_URL` | The JDBC URL for the ClickHouse database |
+| `PLACE_URL` | Bot: base URL of the place describer (dotclaude `scripts/place/place-server.py`) for the 📍 line; unset turns the line off |
 | `CALENDAR_SECRET` | Path secret of the calendar feed (web server) |
 | `OPENCAGE_KEY` | OpenCage key for reverse geocoding OwnTracks pings on `POST /pub` (`opencage:` prefix optional) |
 
