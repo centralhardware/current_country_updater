@@ -24,6 +24,15 @@ class OwnTracksTest {
         assertEquals(Geo("", "", "", ""), Geocoder.parseOpenCage("""{"results":[]}"""))
     }
 
+    @Test
+    fun `public place comes from the poi, never from a home address`() {
+        fun place(components: String) = Geocoder.parseOpenCage("""{"results":[{"components":$components}]}""").place
+        assertEquals("Café Kotor", place("""{"_category":"commerce","_type":"cafe","cafe":"Café Kotor","country_code":"me"}"""))
+        assertEquals("", place("""{"_category":"building","_type":"building","house_number":"5","road":"Njegoševa"}"""))
+        assertEquals("", place("""{"_category":"road","_type":"road","road":"Njegoševa"}"""))
+        assertEquals("", place("""{"_category":"commerce","_type":"cafe"}"""))
+    }
+
     /** A real OwnTracks iOS location message: the contract the phone sends. */
     @Test
     fun `app location message to request`() {

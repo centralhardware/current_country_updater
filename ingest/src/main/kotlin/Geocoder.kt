@@ -12,7 +12,7 @@ import kotliquery.sessionOf
 import kotlinx.serialization.json.*
 
 /** What reverse geocoding gives a ping, mirroring the OwnTracks Recorder's `geo` record. */
-data class Geo(val cc: String, val addr: String, val locality: String, val tzname: String)
+data class Geo(val cc: String, val addr: String, val locality: String, val tzname: String, val place: String = "")
 
 /**
  * Reverse geocoding the way the OwnTracks Recorder did it: one OpenCage lookup
@@ -81,14 +81,40 @@ object Geocoder {
             addr = first.str("formatted").orEmpty(),
             locality = components.str("city").orEmpty(),
             tzname = first?.get("annotations")?.jsonObject?.get("timezone")?.jsonObject.str("name").orEmpty(),
+            place = publicPlace(components),
         )
     }
+
+    /**
+     * OpenCage's categories for places open to anyone. Roads, buildings, houses, postcodes and
+     * bare settlements fall outside them, so a residential address never yields a place.
+     */
+    private val PUBLIC_CATEGORIES = setOf(
+        "commerce", "education", "health", "outdoors/recreation", "transportation",
+        "travel/tourism", "place_of_worship", "financial", "government", "accommodation",
+    )
+
+    /** The named POI the coordinates fall in -- its name sits under the key OpenCage gives as `_type`. */
+    internal fun publicPlace(components: JsonObject?): String {
+        components ?: return ""
+        val category = (components["_category"] as? JsonPrimitive)?.contentOrNull ?: return ""
+        if (category !in PUBLIC_CATEGORIES) return ""
+        val type = (components["_type"] as? JsonPrimitive)?.contentOrNull ?: return ""
+        return (components[type] as? JsonPrimitive)?.contentOrNull?.trim().orEmpty()
+    }
+
+    /** The cached public place of [ghash], or null when the cell has none or is not cached. */
+    fun place(ghash: String): String? = runCatching {
+        sessionOf(PostgresService.dataSource).use { s ->
+            s.run(queryOf("SELECT place FROM geo_cache WHERE ghash = ?", ghash).map { it.stringOrNull("place") }.asSingle)
+        }
+    }.onFailure { KSLog.warning("Geo cache read failed for $ghash: ${it.message}") }.getOrNull()?.ifEmpty { null }
 
     private fun cached(ghash: String): Geo? = runCatching {
         sessionOf(PostgresService.dataSource).use { s ->
             s.run(
-                queryOf("SELECT cc, addr, locality, tzname FROM geo_cache WHERE ghash = ?", ghash)
-                    .map { Geo(it.string("cc"), it.string("addr"), it.string("locality"), it.string("tzname")) }
+                queryOf("SELECT cc, addr, locality, tzname, place FROM geo_cache WHERE ghash = ? AND place IS NOT NULL", ghash)
+                    .map { Geo(it.string("cc"), it.string("addr"), it.string("locality"), it.string("tzname"), it.string("place")) }
                     .asSingle
             )
         }
@@ -99,10 +125,10 @@ object Geocoder {
             s.update(
                 queryOf(
                     """
-                    INSERT INTO geo_cache (ghash, cc, addr, locality, tzname) VALUES (?, ?, ?, ?, ?)
-                    ON CONFLICT (ghash) DO NOTHING
+                    INSERT INTO geo_cache (ghash, cc, addr, locality, tzname, place) VALUES (?, ?, ?, ?, ?, ?)
+                    ON CONFLICT (ghash) DO UPDATE SET place = EXCLUDED.place WHERE geo_cache.place IS NULL
                     """.trimIndent(),
-                    ghash, geo.cc, geo.addr, geo.locality, geo.tzname
+                    ghash, geo.cc, geo.addr, geo.locality, geo.tzname, geo.place
                 )
             )
         }

@@ -32,6 +32,12 @@ object ChannelManager {
     // Past this the last ping no longer says where the post was written.
     private val STALE_AFTER: Duration = Duration.ofHours(24)
 
+    // The place line needs a ping this fresh: it names a spot, not a city.
+    private val PLACE_FRESH_FOR: Duration = Duration.ofMinutes(15)
+
+    // Anything this close to where he sleeps is home, whatever OpenCage calls the cell.
+    private const val HOME_RADIUS_METERS = 300.0
+
     fun BehaviourContext.registerHashtagHandler(channelId: Long) {
         onContentMessage {
             if (it.chat.id.chatId.long != channelId) return@onContentMessage
@@ -144,6 +150,32 @@ object ChannelManager {
         }
         val extraTags = TagManager.getActiveTags()
         val extra = if (extraTags.isNotEmpty()) " ${extraTags.joinToString(" ")}" else ""
-        return "\n\n#$country $city$extra"
+        val place = currentPlace(location)?.let { "📍 $it\n" }.orEmpty()
+        return "\n\n$place#$country $city$extra"
     }
+
+    /** The public place he is at right now, or null: stale ping, no named place, near home or home unknown. */
+    private fun currentPlace(location: DatabaseService.Location): String? {
+        if (location.ghash.isEmpty() || Duration.between(location.ts, Instant.now()) > PLACE_FRESH_FOR) return null
+        val place = Geocoder.place(location.ghash) ?: return null
+        val homes = runCatching { DatabaseService.getSleepPlaces() }
+            .onFailure { KSLog.warning("Home lookup failed, leaving the place out: ${it.message}") }
+            .getOrElse { return null }
+        // Not knowing where home is means not knowing it isn't here: say nothing.
+        if (homes.isEmpty()) return null
+        val lat = location.latitude.toDouble()
+        val lon = location.longitude.toDouble()
+        if (homes.any { (hLat, hLon) -> distanceMeters(hLat, hLon, lat, lon) < HOME_RADIUS_METERS }) return null
+        return place
+    }
+}
+
+/** Great-circle distance, haversine. */
+internal fun distanceMeters(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+    val r = 6_371_000.0
+    val dLat = Math.toRadians(lat2 - lat1)
+    val dLon = Math.toRadians(lon2 - lon1)
+    val a = Math.sin(dLat / 2).let { it * it } +
+        Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) * Math.sin(dLon / 2).let { it * it }
+    return 2 * r * Math.asin(Math.sqrt(a))
 }
