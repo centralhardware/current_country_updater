@@ -1,16 +1,19 @@
 import dev.inmo.kslog.common.KSLog
 import dev.inmo.kslog.common.warning
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
+import io.ktor.http.isSuccess
+import io.ktor.serialization.kotlinx.json.json
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.put
-import java.net.URI
-import java.net.http.HttpClient
-import java.net.http.HttpRequest
-import java.net.http.HttpResponse
-import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -19,26 +22,32 @@ import java.util.concurrent.ConcurrentHashMap
  * Answers are cached per geohash-7 cell, empty ones too, so a cell costs one call.
  */
 object PlaceService {
+    @Serializable
+    private data class Request(val lat: Double, val lon: Double, val acc: Int? = null)
+
+    @Serializable
+    private data class Response(val place: String = "")
+
     private val url: String? = System.getenv("PLACE_URL")?.trimEnd('/')?.ifBlank { null }
-    private val client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build()
     private val cache = ConcurrentHashMap<String, String>()
 
+    private val client = HttpClient(CIO) {
+        install(HttpTimeout) { connectTimeoutMillis = 5_000; requestTimeoutMillis = 70_000 }
+        install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
+        expectSuccess = false
+    }
+
     /** The place's one-line description, or null: no service, no answer, or not a public place. */
-    fun describe(ghash: String, lat: Double, lon: Double, acc: Int?): String? {
+    suspend fun describe(ghash: String, lat: Double, lon: Double, acc: Int?): String? {
         val base = url ?: return null
         cache[ghash]?.let { return it.ifEmpty { null } }
-        val body = buildJsonObject { put("lat", lat); put("lon", lon); acc?.let { put("acc", it) } }.toString()
         val place = runCatching {
-            val response = client.send(
-                HttpRequest.newBuilder(URI("$base/place"))
-                    .timeout(Duration.ofSeconds(70))
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(body))
-                    .build(),
-                HttpResponse.BodyHandlers.ofString(),
-            )
-            check(response.statusCode() == 200) { "HTTP ${response.statusCode()}: ${response.body().take(200)}" }
-            (Json.parseToJsonElement(response.body()).jsonObject["place"] as? JsonPrimitive)?.contentOrNull?.trim().orEmpty()
+            val response = client.post("$base/place") {
+                contentType(ContentType.Application.Json)
+                setBody(Request(lat, lon, acc))
+            }
+            check(response.status.isSuccess()) { "${response.status}: ${response.bodyAsText().take(200)}" }
+            response.body<Response>().place.trim()
         }.onFailure { KSLog.warning("Place describer failed for $ghash: ${it.message}") }.getOrNull() ?: return null
         cache[ghash] = place
         return place.ifEmpty { null }

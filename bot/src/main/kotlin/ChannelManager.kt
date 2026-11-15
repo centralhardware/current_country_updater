@@ -136,7 +136,7 @@ object ChannelManager {
         return location?.country?.ifEmpty { null }
     }
 
-    private fun buildLocationHashtags(): String {
+    private suspend fun buildLocationHashtags(): String {
         val location = DatabaseService.getLastLocation() ?: return ""
         val age = Duration.between(location.ts, Instant.now())
         if (age > STALE_AFTER) {
@@ -155,7 +155,7 @@ object ChannelManager {
     }
 
     /** The public place he is at right now, or null: stale ping, no named place, near home or home unknown. */
-    private fun currentPlace(location: DatabaseService.Location): String? {
+    private suspend fun currentPlace(location: DatabaseService.Location): String? {
         if (location.ghash.isEmpty() || Duration.between(location.ts, Instant.now()) > PLACE_FRESH_FOR) return null
         val homes = runCatching { DatabaseService.getSleepPlaces() }
             .onFailure { KSLog.warning("Home lookup failed, leaving the place out: ${it.message}") }
