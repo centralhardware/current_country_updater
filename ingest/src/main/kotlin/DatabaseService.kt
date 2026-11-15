@@ -32,7 +32,9 @@ object DatabaseService {
         val longitude: Float,
         val country: String,
         val locality: String,
-        val ts: Instant
+        val ts: Instant,
+        val ghash: String = "",
+        val acc: Int? = null,
     )
 
     fun getLastLocation(): Location? {
@@ -40,7 +42,7 @@ object DatabaseService {
             queryOf(
                 // language=SQL
                 """
-                    SELECT latitude, longitude, country, locality, toUnixTimestamp(ts) AS ts_epoch
+                    SELECT latitude, longitude, country, locality, toUnixTimestamp(ts) AS ts_epoch, ghash, acc
                     FROM country_days_tracker_bot.country_days_tracker
                     -- ts, not date_time: local wall time runs backwards on a
                     -- westward flight, and ts is the table's sorting key.
@@ -53,9 +55,31 @@ object DatabaseService {
                     row.float("longitude"),
                     row.string("country"),
                     row.string("locality"),
-                    Instant.ofEpochSecond(row.long("ts_epoch"))
+                    Instant.ofEpochSecond(row.long("ts_epoch")),
+                    row.string("ghash"),
+                    row.intOrNull("acc"),
                 )
             }.asSingle
+        )
+    }
+
+    /**
+     * Where he has slept lately: the centre of each geohash-7 cell with a night ping
+     * (01:00-04:59 local wall time) in the last [days] days. A move to a new apartment or
+     * a hotel counts from its first night, with no config; one stray night only hides more.
+     */
+    fun getSleepPlaces(days: Int = 7): List<Pair<Double, Double>> {
+        return sessionOf(dataSource).run(
+            queryOf(
+                // language=SQL
+                """
+                    SELECT avg(toFloat64(latitude)) AS lat, avg(toFloat64(longitude)) AS lon
+                    FROM country_days_tracker_bot.country_days_tracker
+                    WHERE ts >= now() - INTERVAL ? DAY AND toHour(date_time) BETWEEN 1 AND 4
+                    GROUP BY ghash
+                """.trimIndent(),
+                days
+            ).map { row -> row.double("lat") to row.double("lon") }.asList
         )
     }
 
