@@ -18,7 +18,7 @@ dependencies {
     implementation("com.zaxxer:HikariCP:7.1.0")
     implementation("org.flywaydb:flyway-core:13.12.1")
     implementation("org.flywaydb:flyway-database-clickhouse:10.26.2")
-    implementation("org.flywaydb:flyway-database-postgresql:13.12.1")
+    implementation("org.flywaydb:flyway-database-postgresql:13.12.2")
 
     api("io.ktor:ktor-server-core:$ktorVersion")
     implementation("io.ktor:ktor-client-core:$ktorVersion")
