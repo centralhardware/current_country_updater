@@ -11,10 +11,14 @@ import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onConten
 import dev.inmo.tgbotapi.extensions.utils.asChannelChat
 import dev.inmo.tgbotapi.extensions.utils.extensions.raw.caption_entities
 import dev.inmo.tgbotapi.extensions.utils.extensions.raw.entities
+import dev.inmo.tgbotapi.requests.edit.text.EditChatMessageRichText
 import dev.inmo.tgbotapi.types.message.content.MediaGroupContent
+import dev.inmo.tgbotapi.types.message.content.RichMessageContent
 import dev.inmo.tgbotapi.types.message.content.TextContent
 import dev.inmo.tgbotapi.types.message.content.TextedContent
 import dev.inmo.tgbotapi.types.message.content.TextedMediaContent
+import dev.inmo.tgbotapi.types.rich.InputRichMessageHTML
+import dev.inmo.tgbotapi.types.rich.html
 import dev.inmo.tgbotapi.types.toChatId
 import dev.inmo.tgbotapi.utils.buildEntities
 import dev.inmo.tgbotapi.utils.regular
@@ -88,12 +92,30 @@ object ChannelManager {
                             entities = msgSources + buildEntities { regular(hashtags) }
                         )
                     }
+                    // Rich (Bot API 10.1) posts have no entities: re-send their blocks as rich HTML
+                    // with the hashtags as one more paragraph; Telegram links the #tags itself.
+                    is RichMessageContent -> {
+                        val rich = (it.content as RichMessageContent).richMessage
+                        bot.execute(
+                            EditChatMessageRichText(
+                                chatId = it.chat.id,
+                                messageId = it.messageId,
+                                richMessage = InputRichMessageHTML(
+                                    rich.html + "<p>${escapeHtml(hashtags.trim())}</p>",
+                                    isRtl = rich.isRtl
+                                )
+                            )
+                        )
+                    }
                     // Stickers, video notes, polls, locations, dice: no text to append to
                     else -> KSLog.info("Skipping hashtags for ${it.content::class.simpleName}")
                 }
             }.onFailure { e -> KSLog.error("Failed to add hashtags to message ${it.messageId}", e) }
         }
     }
+
+    private fun escapeHtml(text: String) =
+        text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
     suspend fun BehaviourContext.updateChannelTitle(channelId: Long, channelTitlePattern: String) {
         val currentCountry = getCurrentCountry()
