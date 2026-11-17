@@ -46,8 +46,10 @@ object ChannelManager {
         onContentMessage {
             if (it.chat.id.chatId.long != channelId) return@onContentMessage
 
-            val hashtags = buildLocationHashtags()
-            if (hashtags.isEmpty()) return@onContentMessage
+            val tags = runCatching { buildLocationHashtags() }
+                .onFailure { e -> KSLog.error("Failed to build hashtags for message ${it.messageId}", e) }
+                .getOrDefault("")
+            if (tags.isEmpty()) return@onContentMessage
 
             val limit = when (it.content) {
                 is TextedMediaContent, is MediaGroupContent<*> -> CAPTION_LIMIT
@@ -61,6 +63,9 @@ object ChannelManager {
                 group.lastOrNull { part -> !part.content.text.isNullOrEmpty() } ?: group.first()
             }
             val length = (target?.content ?: it.content as? TextedContent)?.text?.length ?: 0
+            // A post without a caption gets the tags alone: a caption that starts with blank lines
+            // is what Telegram trims, and the edit came back empty.
+            val hashtags = if (length == 0) tags else "\n\n$tags"
             if (limit != null && length + hashtags.length > limit) {
                 KSLog.warning("Skipping hashtags: ${length + hashtags.length} chars would exceed the $limit limit")
                 return@onContentMessage
@@ -110,7 +115,8 @@ object ChannelManager {
                     // Stickers, video notes, polls, locations, dice: no text to append to
                     else -> KSLog.info("Skipping hashtags for ${it.content::class.simpleName}")
                 }
-            }.onFailure { e -> KSLog.error("Failed to add hashtags to message ${it.messageId}", e) }
+            }.onSuccess { _ -> KSLog.info("Hashtags added to message ${it.messageId}") }
+                .onFailure { e -> KSLog.error("Failed to add hashtags to message ${it.messageId}", e) }
         }
     }
 
@@ -173,7 +179,7 @@ object ChannelManager {
         val extraTags = TagManager.getActiveTags()
         val extra = if (extraTags.isNotEmpty()) " ${extraTags.joinToString(" ")}" else ""
         val place = currentPlace(location)?.let { "📍 $it\n" }.orEmpty()
-        return "\n\n$place#$country $city$extra"
+        return "$place#$country $city$extra"
     }
 
     /** The public place he is at right now, or null: stale ping, no named place, near home or home unknown. */
