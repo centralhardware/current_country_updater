@@ -6,7 +6,7 @@ plugins {
 }
 
 val ktorVersion = "3.6.1"
-val clickhouseVersion = "0.11.1"
+val clickhouseVersion = "0.11.2"
 
 dependencies {
     api("dev.inmo:kslog:2.1.0")
