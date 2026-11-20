@@ -16,7 +16,7 @@ data class Geo(val cc: String, val addr: String, val locality: String, val tznam
 
 /**
  * Reverse geocoding the way the OwnTracks Recorder did it: one OpenCage lookup
- * per geohash-7 cell, kept forever in Postgres (the recorder's LMDB `ghash`
+ * per geohash-7 cell, kept forever in ClickHouse (the recorder's LMDB `ghash`
  * cache, with its default clean_age of 0).
  *
  * The time zone comes from OpenCage's `annotations.timezone.name` -- the same
@@ -85,9 +85,12 @@ object Geocoder {
     }
 
     private fun cached(ghash: String): Geo? = runCatching {
-        sessionOf(PostgresService.dataSource).use { s ->
+        sessionOf(ClickHouse.dataSource).use { s ->
             s.run(
-                queryOf("SELECT cc, addr, locality, tzname FROM geo_cache WHERE ghash = ?", ghash)
+                queryOf(
+                    "SELECT cc, addr, locality, tzname FROM country_days_tracker_bot.geo_cache WHERE ghash = ? LIMIT 1",
+                    ghash
+                )
                     .map { Geo(it.string("cc"), it.string("addr"), it.string("locality"), it.string("tzname")) }
                     .asSingle
             )
@@ -95,13 +98,12 @@ object Geocoder {
     }.onFailure { KSLog.warning("Geo cache read failed for $ghash: ${it.message}") }.getOrNull()
 
     private fun store(ghash: String, geo: Geo) {
-        sessionOf(PostgresService.dataSource).use { s ->
+        // No ON CONFLICT here: a duplicate cell is merged away by the
+        // ReplacingMergeTree, and both copies hold the same answer.
+        sessionOf(ClickHouse.dataSource).use { s ->
             s.update(
                 queryOf(
-                    """
-                    INSERT INTO geo_cache (ghash, cc, addr, locality, tzname) VALUES (?, ?, ?, ?, ?)
-                    ON CONFLICT (ghash) DO NOTHING
-                    """.trimIndent(),
+                    "INSERT INTO country_days_tracker_bot.geo_cache (ghash, cc, addr, locality, tzname) VALUES (?, ?, ?, ?, ?)",
                     ghash, geo.cc, geo.addr, geo.locality, geo.tzname
                 )
             )
