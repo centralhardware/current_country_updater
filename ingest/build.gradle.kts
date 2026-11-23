@@ -16,7 +16,7 @@ dependencies {
     api("com.github.seratch:kotliquery:1.9.1")
     api("org.postgresql:postgresql:42.7.14")
     implementation("com.zaxxer:HikariCP:7.1.0")
-    implementation("org.flywaydb:flyway-core:13.12.2")
+    implementation("org.flywaydb:flyway-core:13.13.0")
     implementation("org.flywaydb:flyway-database-clickhouse:10.26.2")
     implementation("org.flywaydb:flyway-database-postgresql:13.13.0")
 
