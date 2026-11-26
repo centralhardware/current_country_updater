@@ -14,7 +14,7 @@ dependencies {
     api("com.clickhouse:clickhouse-jdbc:$clickhouseVersion")
     implementation("com.clickhouse:clickhouse-http-client:$clickhouseVersion")
     api("com.github.seratch:kotliquery:1.9.1")
-    api("org.postgresql:postgresql:42.7.14")
+    api("org.postgresql:postgresql:42.7.15")
     implementation("com.zaxxer:HikariCP:7.1.0")
     implementation("org.flywaydb:flyway-core:13.13.0")
     implementation("org.flywaydb:flyway-database-clickhouse:10.26.3")
