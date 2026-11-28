@@ -22,7 +22,7 @@ import java.time.Instant
  *  - the body is one OwnTracks JSON message, `_type` says what it is;
  *  - the reply is a JSON array (the recorder's "friends" list) -- always `[]`;
  *  - a location that cannot be reverse-geocoded or stored gets a 503, so the
- *    phone keeps it in its queue and sends it again -- except when every
+ *    phone keeps it in its queue and sends it again -- except when the
  *    OpenCage key is out of quota: then it is stored ungeocoded (empty
  *    country, UTC) and `POST /geo/backfill` geocodes it later.
  *
@@ -70,7 +70,7 @@ object OwnTracks {
 
         val geo = when (val r = Geocoder.lookup(ping.ghash, ping.lat, ping.lon)) {
             is GeoResult.Found -> r.geo
-            // Out of quota on every key: keep the ping, ungeocoded, rather than
+            // Key out of quota: keep the ping, ungeocoded, rather than
             // let the phone's queue grow until tomorrow. POST /geo/backfill
             // fills it in once a key has quota again.
             GeoResult.QuotaExhausted -> Geo.NONE

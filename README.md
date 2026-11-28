@@ -29,7 +29,7 @@ The application uses environment variables for configuration:
 | `CLICKHOUSE_URL` | The JDBC URL for the ClickHouse database |
 | `PLACE_URL` | Bot: base URL of the place describer (dotclaude `scripts/place/place-server.py`) for the 📍 line; unset turns the line off |
 | `CALENDAR_SECRET` | Path secret of the calendar feed (web server) |
-| `OPENCAGE_KEY` | OpenCage key(s) for reverse geocoding OwnTracks pings on `POST /pub`, comma-separated and tried in order (`opencage:` prefix optional) |
+| `OPENCAGE_KEY` | OpenCage key for reverse geocoding OwnTracks pings on `POST /pub` (`opencage:` prefix optional) |
 
 ## Database Schema
 
@@ -104,9 +104,9 @@ Point the OwnTracks app (HTTP mode) at `POST /pub` with the `LOCATION_USER`/`LOC
 
 ## Geocoding quota
 
-Every OpenCage request is logged to `country_days_tracker_bot.geo_api_usage` (key = last 4 chars, outcome, OpenCage's `rate` block). A key that answers 402/429 or reports `remaining: 0` is skipped until its reset; when all keys are spent, pings are stored **without** geocoding (empty country, tzname `Z`) instead of being rejected.
+Every OpenCage request is logged to `country_days_tracker_bot.geo_api_usage` (key = last 4 chars, outcome, OpenCage's `rate` block). When the key answers 402/429 or reports `remaining: 0` it is not called again until its reset, and meanwhile pings are stored **without** geocoding (empty country, tzname `Z`) instead of being rejected.
 
 Both endpoints use the `/pub` Basic auth:
 
-- `GET /geo/usage` -- per key: requests today / 30 days, quota hits, errors, last reported limit/remaining/reset, blocked-until; plus cached cells and ungeocoded backlog.
+- `GET /geo/usage` -- per key id: requests today / 30 days, quota hits, errors, last reported limit/remaining/reset, blocked-until; plus cached cells and ungeocoded backlog.
 - `POST /geo/backfill?limit=100` -- geocodes up to `limit` (max 2500) ungeocoded cells, oldest first, and rewrites their rows (country, tzname, per-row tz_offset, locality, addr). Stops at the first quota exhaustion and reports what is left.

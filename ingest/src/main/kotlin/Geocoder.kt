@@ -13,7 +13,6 @@ import kotlinx.serialization.json.*
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
-import java.util.concurrent.ConcurrentHashMap
 
 /** What reverse geocoding gives a ping, mirroring the OwnTracks Recorder's `geo` record. */
 data class Geo(val cc: String, val addr: String, val locality: String, val tzname: String) {
@@ -43,10 +42,8 @@ data class Rate(val limit: Int, val remaining: Int, val reset: Instant)
  * IANA name the recorder's offline zone database produced -- so it is cached
  * with the cell instead of needing a lookup library.
  *
- * Several keys may be configured (OPENCAGE_KEY, comma-separated). They are
- * tried in order; a key that reports its quota spent (402, 429, or
- * `rate.remaining` 0) is skipped until its `rate.reset`. When none is left the
- * lookup answers [GeoResult.QuotaExhausted] and the ping is stored without
+ * When the key reports its quota spent (402, 429, or `rate.remaining` 0) it
+ * is not called again until its `rate.reset`; meanwhile the lookup answers [GeoResult.QuotaExhausted] and the ping is stored without
  * geocoding, to be filled in later by [Backfill]. Every request is logged to
  * `geo_api_usage`.
  */
@@ -61,16 +58,14 @@ object Geocoder {
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    /** Key -> the instant it may be used again. In memory: a restart just re-probes each key once. */
-    private val blockedUntil = ConcurrentHashMap<String, Instant>()
+    /** When the key may be used again. In memory: a restart just re-probes it once. */
+    @Volatile
+    private var blockedUntil: Instant? = null
 
     internal fun keyId(key: String) = key.takeLast(4)
 
-    /** Key id -> blocked-until, for the usage report. */
-    fun blocked(): Map<String, Instant> {
-        val now = Instant.now()
-        return blockedUntil.filterValues { it.isAfter(now) }.mapKeys { keyId(it.key) }
-    }
+    /** Blocked-until, for the usage report; null when the key is usable. */
+    fun blocked(): Instant? = blockedUntil?.takeIf { it.isAfter(Instant.now()) }
 
     /** Cached or fresh geo for [ghash]. */
     suspend fun lookup(ghash: String, lat: Double, lon: Double): GeoResult {
@@ -84,21 +79,12 @@ object Geocoder {
     }
 
     private suspend fun fetch(lat: Double, lon: Double): GeoResult {
-        val keys = IngestConfig.OPENCAGE_KEYS
-        if (keys.isEmpty()) {
+        val key = IngestConfig.OPENCAGE_KEY ?: run {
             KSLog.warning("OPENCAGE_KEY not set: cannot reverse-geocode")
             return GeoResult.Failed
         }
-        val now = Instant.now()
-        for (key in keys) {
-            if (blockedUntil[key]?.isAfter(now) == true) continue
-            when (val r = fetchWith(key, lat, lon)) {
-                is GeoResult.Found, GeoResult.Failed -> return r
-                GeoResult.QuotaExhausted -> continue // try the next key
-            }
-        }
-        KSLog.warning("OpenCage: every key is out of quota; storing the ping without geocoding")
-        return GeoResult.QuotaExhausted
+        if (blockedUntil?.isAfter(Instant.now()) == true) return GeoResult.QuotaExhausted
+        return fetchWith(key, lat, lon)
     }
 
     private suspend fun fetchWith(key: String, lat: Double, lon: Double): GeoResult {
@@ -136,7 +122,7 @@ object Geocoder {
                 GeoResult.QuotaExhausted
             }
             401, 403 -> {
-                // Invalid, suspended or disabled key: set it aside for an hour, use the others.
+                // Invalid, suspended or disabled key: store ungeocoded for an hour, then retry.
                 logUsage(id, "invalid_key", status, rate)
                 block(key, Instant.now().plusSeconds(3600))
                 GeoResult.QuotaExhausted
@@ -150,7 +136,7 @@ object Geocoder {
     }
 
     private fun block(key: String, until: Instant) {
-        blockedUntil[key] = until
+        blockedUntil = until
         KSLog.warning("OpenCage key …${keyId(key)} out of quota until $until")
     }
 

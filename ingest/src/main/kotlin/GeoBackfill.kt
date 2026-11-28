@@ -22,7 +22,7 @@ import kotliquery.sessionOf
  * which also have no country and no cached cell; those are left as they are.
  *
  * The backfill geocodes those cells -- one lookup each, through the same
- * cache and key rotation as /pub -- and rewrites their rows in
+ * cache and quota handling as /pub -- and rewrites their rows in
  * `country_days_tracker_data` with an ALTER UPDATE. tz_offset is recomputed
  * per row from the zone, so summer time is right. Rows still in the Buffer
  * (the last minute) are picked up by the next run.
@@ -133,7 +133,6 @@ object GeoUsage {
 
     @Serializable
     data class Report(
-        val keysConfigured: Int,
         val keys: List<KeyUsage>,
         val cachedCells: Long,
         val ungeocodedCells: Long,
@@ -142,7 +141,8 @@ object GeoUsage {
 
     fun report(): Report {
         val blocked = Geocoder.blocked()
-        val configured = IngestConfig.OPENCAGE_KEYS.map(Geocoder::keyId)
+        val current = IngestConfig.OPENCAGE_KEY?.let(Geocoder::keyId)
+        val configured = listOfNotNull(current)
         val rows = sessionOf(ClickHouse.dataSource).use { s ->
             s.run(
                 queryOf(
@@ -173,19 +173,19 @@ object GeoUsage {
                         rateLimit = it.int("lim").takeIf { hasRate },
                         rateRemaining = it.int("rem").takeIf { hasRate },
                         rateReset = it.string("reset").takeIf { hasRate },
-                        blockedUntil = blocked[it.string("key_id")]?.toString(),
+                        blockedUntil = blocked?.takeIf { _ -> it.string("key_id") == current }?.toString(),
                     )
                 }.asList
             )
         }.associateBy { it.keyId }
         val keys = configured.map {
-            rows[it] ?: KeyUsage(it, 0, 0, 0, 0, null, null, null, null, blocked[it]?.toString())
+            rows[it] ?: KeyUsage(it, 0, 0, 0, 0, null, null, null, null, blocked?.toString())
         } + rows.filterKeys { it !in configured }.values
         val cached = sessionOf(ClickHouse.dataSource).use { s ->
             s.run(queryOf("SELECT uniqExact(ghash) AS n FROM country_days_tracker_bot.geo_cache").map { it.long("n") }.asSingle)
         } ?: 0
         val (cells, pendingRows) = GeoBackfill.pending()
-        return Report(configured.size, keys, cached, cells, pendingRows)
+        return Report(keys, cached, cells, pendingRows)
     }
 }
 
