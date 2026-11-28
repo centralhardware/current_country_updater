@@ -19,7 +19,7 @@ data class Geo(val cc: String, val addr: String, val locality: String, val tznam
     companion object {
         /** No geocoding at all: what a ping is stored with while every key is out of quota. */
         val NONE = Geo("", "", "", "")
-        /** A ping from a plane: deliberately not geocoded, and not for the backfill. */
+        /** A ping from a plane with no ground ping to borrow from: not for the backfill either. */
         val IN_FLIGHT = Geo("", "", "", "UTC")
     }
 }
@@ -188,6 +188,33 @@ object Geocoder {
             tzname = first?.get("annotations")?.jsonObject?.get("timezone")?.jsonObject.str("name").orEmpty(),
         )
     }
+
+    /**
+     * The cached geo of the newest ping that was geocoded on the ground, for
+     * in-flight pings to inherit. Rows of the plane itself are skipped by
+     * speed, quota-skipped ones by their "Z" zone.
+     */
+    fun lastGround(): Geo? = runCatching {
+        sessionOf(ClickHouse.dataSource).use { s ->
+            s.run(
+                queryOf(
+                    """
+                    SELECT cc, addr, locality, tzname FROM country_days_tracker_bot.geo_cache
+                    WHERE ghash = (
+                        SELECT ghash FROM country_days_tracker_bot.country_days_tracker
+                        WHERE vel < ? AND tzname != 'Z' AND ghash != ''
+                          AND ts > now() - INTERVAL 2 DAY
+                        ORDER BY ts DESC LIMIT 1
+                    )
+                    LIMIT 1
+                    """.trimIndent(),
+                    OwnTracks.IN_FLIGHT_KMH
+                )
+                    .map { Geo(it.string("cc"), it.string("addr"), it.string("locality"), it.string("tzname")) }
+                    .asSingle
+            )
+        }
+    }.onFailure { KSLog.warning("Last ground geo lookup failed: ${it.message}") }.getOrNull()
 
     private fun cached(ghash: String): Geo? = runCatching {
         sessionOf(ClickHouse.dataSource).use { s ->
