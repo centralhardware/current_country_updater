@@ -22,7 +22,9 @@ import java.time.Instant
  *  - the body is one OwnTracks JSON message, `_type` says what it is;
  *  - the reply is a JSON array (the recorder's "friends" list) -- always `[]`;
  *  - a location that cannot be reverse-geocoded or stored gets a 503, so the
- *    phone keeps it in its queue and sends it again.
+ *    phone keeps it in its queue and sends it again -- except when the
+ *    OpenCage key is out of quota: then it is stored ungeocoded (empty
+ *    country, tzname "Z").
  *
  * Only `location` messages are recorded; everything else (lwt, transition,
  * waypoint, card, status...) is acknowledged and dropped, as the recorder's
@@ -66,10 +68,23 @@ object OwnTracks {
         if (msg.str("_type") != "location") return call.ok()
         val ping = toPing(msg)!!
 
-        val geo = Geocoder.lookup(ping.ghash, ping.lat, ping.lon) ?: run {
-            KSLog.warning("OwnTracks: reverse geocoding failed for ${ping.ghash}; rejecting so the phone retries")
-            call.respond(HttpStatusCode.ServiceUnavailable, "reverse geocoding failed")
-            return
+        val geo = if (ping.inFlight()) {
+            // Airborne: the cell under a plane is a new one every few seconds
+            // and its address means nothing, so don't spend quota on it. No
+            // country is stored (the air is not a country day); the zone is
+            // the last ground ping's (the departure), so wall time stays sane.
+            KSLog.info("OwnTracks: in flight (${ping.msg.int("vel")} km/h), skipping geocoding")
+            Geocoder.lastGround()?.let { Geo.IN_FLIGHT.copy(tzname = it.tzname.ifBlank { "UTC" }) } ?: Geo.IN_FLIGHT
+        } else when (val r = Geocoder.lookup(ping.ghash, ping.lat, ping.lon)) {
+            is GeoResult.Found -> r.geo
+            // Key out of quota: keep the ping, ungeocoded, rather than
+            // let the phone's queue grow until tomorrow.
+            GeoResult.QuotaExhausted -> Geo.NONE
+            GeoResult.Failed -> {
+                KSLog.warning("OwnTracks: reverse geocoding failed for ${ping.ghash}; rejecting so the phone retries")
+                call.respond(HttpStatusCode.ServiceUnavailable, "reverse geocoding failed")
+                return
+            }
         }
 
         LocationStore.save(ping.toRequest(geo))
@@ -92,6 +107,14 @@ object OwnTracks {
 
     /** The raw fields of one location message, before geocoding. */
     data class Ping(val msg: JsonObject, val lat: Double, val lon: Double, val tst: Long, val ghash: String) {
+        /**
+         * 200 km/h and up is a plane. Over the whole history, ground pings
+         * (alt near 0) thin out from 150 km/h -- trains -- and stop under 200;
+         * past 275 km/h it is all climb, cruise and descent. The 4 pings
+         * between 175 and 275 are take-off and landing rolls.
+         */
+        fun inFlight() = msg.int("vel") >= IN_FLIGHT_KMH
+
         fun toRequest(geo: Geo) = LocationRequest(
             latitude = lat.toFloat(),
             longitude = lon.toFloat(),
@@ -120,6 +143,8 @@ object OwnTracks {
         val tst = msg.num("tst")?.toLong() ?: return null
         return Ping(msg, lat, lon, tst, geohash(lat, lon))
     }
+
+    const val IN_FLIGHT_KMH = 200
 
     private fun JsonObject.str(k: String) = (this[k] as? JsonPrimitive)?.contentOrNull
     private fun JsonObject.num(k: String) = (this[k] as? JsonPrimitive)?.doubleOrNull
