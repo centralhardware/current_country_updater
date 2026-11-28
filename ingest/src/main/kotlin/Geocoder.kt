@@ -19,6 +19,8 @@ data class Geo(val cc: String, val addr: String, val locality: String, val tznam
     companion object {
         /** No geocoding at all: what a ping is stored with while every key is out of quota. */
         val NONE = Geo("", "", "", "")
+        /** A ping from a plane: deliberately not geocoded, and not for the backfill. */
+        val IN_FLIGHT = Geo("", "", "", "UTC")
     }
 }
 

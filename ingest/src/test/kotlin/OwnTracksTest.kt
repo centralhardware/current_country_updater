@@ -3,6 +3,7 @@ import kotlinx.serialization.json.jsonObject
 import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -30,6 +31,17 @@ class OwnTracksTest {
         assertEquals(Rate(2500, 12, Instant.ofEpochSecond(1764374400)), r)
         assertNull(Geocoder.parseRate("""{"results":[]}"""), "paid keys answer without a rate block")
         assertNull(Geocoder.parseRate("not json"))
+    }
+
+    @Test
+    fun `in flight by speed`() {
+        fun ping(vel: Int) = OwnTracks.toPing(
+            Json.parseToJsonElement("""{"lat":13.7,"lon":100.5,"tst":1764374400,"vel":$vel}""").jsonObject
+        )!!
+        assertTrue(ping(850).inFlight())
+        assertTrue(ping(250).inFlight())
+        assertFalse(ping(120).inFlight())
+        assertFalse(ping(0).inFlight())
     }
 
     /** A real OwnTracks iOS location message: the contract the phone sends. */

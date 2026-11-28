@@ -68,7 +68,14 @@ object OwnTracks {
         if (msg.str("_type") != "location") return call.ok()
         val ping = toPing(msg)!!
 
-        val geo = when (val r = Geocoder.lookup(ping.ghash, ping.lat, ping.lon)) {
+        val geo = if (ping.inFlight()) {
+            // Airborne: the cell under a plane is a new one every few seconds
+            // and its address means nothing, so don't spend quota on it. Stored
+            // with tzname "UTC" (not the "Z" of a quota skip) so the backfill
+            // leaves it alone too.
+            KSLog.info("OwnTracks: in flight (${ping.msg.int("vel")} km/h), skipping geocoding")
+            Geo.IN_FLIGHT
+        } else when (val r = Geocoder.lookup(ping.ghash, ping.lat, ping.lon)) {
             is GeoResult.Found -> r.geo
             // Key out of quota: keep the ping, ungeocoded, rather than
             // let the phone's queue grow until tomorrow. POST /geo/backfill
@@ -101,6 +108,13 @@ object OwnTracks {
 
     /** The raw fields of one location message, before geocoding. */
     data class Ping(val msg: JsonObject, val lat: Double, val lon: Double, val tst: Long, val ghash: String) {
+        /**
+         * 250 km/h and up is a plane: over the last 120 days every such ping
+         * (606) was on a flight -- 560 of them above 3 km -- and no ground ping
+         * came close (the fastest train/car ones top out under 250).
+         */
+        fun inFlight() = msg.int("vel") >= IN_FLIGHT_KMH
+
         fun toRequest(geo: Geo) = LocationRequest(
             latitude = lat.toFloat(),
             longitude = lon.toFloat(),
@@ -129,6 +143,8 @@ object OwnTracks {
         val tst = msg.num("tst")?.toLong() ?: return null
         return Ping(msg, lat, lon, tst, geohash(lat, lon))
     }
+
+    const val IN_FLIGHT_KMH = 250
 
     private fun JsonObject.str(k: String) = (this[k] as? JsonPrimitive)?.contentOrNull
     private fun JsonObject.num(k: String) = (this[k] as? JsonPrimitive)?.doubleOrNull

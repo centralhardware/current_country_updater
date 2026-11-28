@@ -106,6 +106,8 @@ Point the OwnTracks app (HTTP mode) at `POST /pub` with the `LOCATION_USER`/`LOC
 
 Every OpenCage request is logged to `country_days_tracker_bot.geo_api_usage` (key = last 4 chars, outcome, OpenCage's `rate` block). When the key answers 402/429 or reports `remaining: 0` it is not called again until its reset, and meanwhile pings are stored **without** geocoding (empty country, tzname `Z`) instead of being rejected.
 
+Pings at 250 km/h or faster (`vel`) are treated as in flight and stored without geocoding (tzname `UTC`); the backfill skips them.
+
 Both endpoints use the `/pub` Basic auth:
 
 - `GET /geo/usage` -- per key id: requests today / 30 days, quota hits, errors, last reported limit/remaining/reset, blocked-until; plus cached cells and ungeocoded backlog.
