@@ -46,8 +46,8 @@ data class Rate(val limit: Int, val remaining: Int, val reset: Instant)
  *
  * When the key reports its quota spent (402, 429, or `rate.remaining` 0) it
  * is not called again until its `rate.reset`; meanwhile the lookup answers [GeoResult.QuotaExhausted] and the ping is stored without
- * geocoding. Each request overwrites the key's row in `geo_api_state`
- * (last outcome and remaining quota).
+ * geocoding. Each request updates the key's row for the day in `geo_api_daily`
+ * (requests so far, last outcome, remaining quota).
  */
 object Geocoder {
 
@@ -159,11 +159,16 @@ object Geocoder {
                 s.update(
                     queryOf(
                         """
-                        INSERT INTO country_days_tracker_bot.geo_api_state
-                            (key_id, outcome, status, rate_limit, rate_remaining, rate_reset)
-                        SELECT toString(?), toString(?), toUInt16(?), toInt32(?), toInt32(?), toDateTime(toInt64(?), 'UTC')
+                        INSERT INTO country_days_tracker_bot.geo_api_daily
+                            (day, key_id, requests, outcome, status, rate_limit, rate_remaining, rate_reset)
+                        SELECT today(), toString(?),
+                               toUInt32(1 + ifNull((
+                                   SELECT max(requests) FROM country_days_tracker_bot.geo_api_daily FINAL
+                                   WHERE key_id = ? AND day = today()
+                               ), 0)),
+                               toString(?), toUInt16(?), toInt32(?), toInt32(?), toDateTime(toInt64(?), 'UTC')
                         """.trimIndent(),
-                        keyId, outcome, status, rate?.limit ?: 0, rate?.remaining ?: 0, rate?.reset?.epochSecond ?: 0L
+                        keyId, keyId, outcome, status, rate?.limit ?: 0, rate?.remaining ?: 0, rate?.reset?.epochSecond ?: 0L
                     )
                 )
             }
