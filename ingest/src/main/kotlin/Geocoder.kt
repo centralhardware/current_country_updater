@@ -19,7 +19,7 @@ data class Geo(val cc: String, val addr: String, val locality: String, val tznam
     companion object {
         /** No geocoding at all: what a ping is stored with while every key is out of quota. */
         val NONE = Geo("", "", "", "")
-        /** A ping from a plane with no ground ping to borrow from: not for the backfill either. */
+        /** A ping from a plane with no recent ground ping to take the zone of. */
         val IN_FLIGHT = Geo("", "", "", "UTC")
     }
 }
@@ -46,7 +46,7 @@ data class Rate(val limit: Int, val remaining: Int, val reset: Instant)
  *
  * When the key reports its quota spent (402, 429, or `rate.remaining` 0) it
  * is not called again until its `rate.reset`; meanwhile the lookup answers [GeoResult.QuotaExhausted] and the ping is stored without
- * geocoding, to be filled in later by [Backfill]. Every request is logged to
+ * geocoding. Every request is logged to
  * `geo_api_usage`.
  */
 object Geocoder {

@@ -24,7 +24,7 @@ import java.time.Instant
  *  - a location that cannot be reverse-geocoded or stored gets a 503, so the
  *    phone keeps it in its queue and sends it again -- except when the
  *    OpenCage key is out of quota: then it is stored ungeocoded (empty
- *    country, UTC) and `POST /geo/backfill` geocodes it later.
+ *    country, tzname "Z").
  *
  * Only `location` messages are recorded; everything else (lwt, transition,
  * waypoint, card, status...) is acknowledged and dropped, as the recorder's
@@ -78,8 +78,7 @@ object OwnTracks {
         } else when (val r = Geocoder.lookup(ping.ghash, ping.lat, ping.lon)) {
             is GeoResult.Found -> r.geo
             // Key out of quota: keep the ping, ungeocoded, rather than
-            // let the phone's queue grow until tomorrow. POST /geo/backfill
-            // fills it in once a key has quota again.
+            // let the phone's queue grow until tomorrow.
             GeoResult.QuotaExhausted -> Geo.NONE
             GeoResult.Failed -> {
                 KSLog.warning("OwnTracks: reverse geocoding failed for ${ping.ghash}; rejecting so the phone retries")
