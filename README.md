@@ -104,13 +104,6 @@ Point the OwnTracks app (HTTP mode) at `POST /pub` with the `LOCATION_USER`/`LOC
 
 ## Geocoding quota
 
-Every OpenCage request is logged to `country_days_tracker_bot.geo_api_usage` (key = last 4 chars, outcome, OpenCage's `rate` block). When the key answers 402/429 or reports `remaining: 0` it is not called again until its reset, and meanwhile pings are stored **without** geocoding (empty country, tzname `Z`) instead of being rejected.
+The key's last state is kept in `country_days_tracker_bot.geo_api_state`: one row per key (last 4 chars), replaced on every OpenCage request, with the last outcome and OpenCage's limit / remaining / reset (`SELECT * FROM country_days_tracker_bot.geo_api_state FINAL`). When the key answers 402/429 or reports `remaining: 0` it is not called again until its reset; meanwhile pings are stored without geocoding (empty country, tzname `Z`) instead of being rejected.
 
 Pings at 200 km/h or faster (`vel`) are treated as in flight and not geocoded: no country, city or address; the timezone is the last ground ping's.
-
-Read it with SQL / Grafana, e.g. today's requests and the last reported quota:
-
-```sql
-SELECT countIf(toDate(ts) = today()) AS today, argMax(rate_remaining, ts) AS remaining, argMax(rate_reset, ts) AS reset
-FROM country_days_tracker_bot.geo_api_usage
-```
