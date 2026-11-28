@@ -104,6 +104,6 @@ Point the OwnTracks app (HTTP mode) at `POST /pub` with the `LOCATION_USER`/`LOC
 
 ## Geocoding quota
 
-The key's last state is kept in `country_days_tracker_bot.geo_api_state`: one row per key (last 4 chars), replaced on every OpenCage request, with the last outcome and OpenCage's limit / remaining / reset (`SELECT * FROM country_days_tracker_bot.geo_api_state FINAL`). When the key answers 402/429 or reports `remaining: 0` it is not called again until its reset; meanwhile pings are stored without geocoding (empty country, tzname `Z`) instead of being rejected.
+The key's state is kept per UTC day in `country_days_tracker_bot.geo_api_daily`: one row per key (last 4 chars) and day, replaced on every OpenCage request, with that day's request count, the last outcome and OpenCage's limit / remaining / reset (`SELECT * FROM country_days_tracker_bot.geo_api_daily FINAL ORDER BY day DESC`). When the key answers 402/429 or reports `remaining: 0` it is not called again until its reset; meanwhile pings are stored without geocoding (empty country, tzname `Z`) instead of being rejected.
 
 Pings at 200 km/h or faster (`vel`) are treated as in flight and not geocoded: no country, city or address; the timezone is the last ground ping's.
