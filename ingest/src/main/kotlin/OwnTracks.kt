@@ -109,9 +109,10 @@ object OwnTracks {
     /** The raw fields of one location message, before geocoding. */
     data class Ping(val msg: JsonObject, val lat: Double, val lon: Double, val tst: Long, val ghash: String) {
         /**
-         * 250 km/h and up is a plane: over the last 120 days every such ping
-         * (606) was on a flight -- 560 of them above 3 km -- and no ground ping
-         * came close (the fastest train/car ones top out under 250).
+         * 200 km/h and up is a plane. Over the whole history, ground pings
+         * (alt near 0) thin out from 150 km/h -- trains -- and stop under 200;
+         * past 275 km/h it is all climb, cruise and descent. The 4 pings
+         * between 175 and 275 are take-off and landing rolls.
          */
         fun inFlight() = msg.int("vel") >= IN_FLIGHT_KMH
 
@@ -144,7 +145,7 @@ object OwnTracks {
         return Ping(msg, lat, lon, tst, geohash(lat, lon))
     }
 
-    const val IN_FLIGHT_KMH = 250
+    const val IN_FLIGHT_KMH = 200
 
     private fun JsonObject.str(k: String) = (this[k] as? JsonPrimitive)?.contentOrNull
     private fun JsonObject.num(k: String) = (this[k] as? JsonPrimitive)?.doubleOrNull

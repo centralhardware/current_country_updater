@@ -39,8 +39,8 @@ class OwnTracksTest {
             Json.parseToJsonElement("""{"lat":13.7,"lon":100.5,"tst":1764374400,"vel":$vel}""").jsonObject
         )!!
         assertTrue(ping(850).inFlight())
-        assertTrue(ping(250).inFlight())
-        assertFalse(ping(120).inFlight())
+        assertTrue(ping(200).inFlight())
+        assertFalse(ping(160).inFlight())
         assertFalse(ping(0).inFlight())
     }
 
