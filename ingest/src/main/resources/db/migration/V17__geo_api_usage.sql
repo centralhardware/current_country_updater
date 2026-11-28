@@ -1,6 +1,5 @@
 -- One row per OpenCage request (cache hits are not logged), so each key's
--- daily use and the quota it last reported can be read back: GET /geo/usage
--- and Grafana. `key_id` is the key's last four characters, never the key.
+-- daily use and the quota it last reported can be read back in Grafana. `key_id` is the key's last four characters, never the key.
 -- `outcome`: ok | quota | rate_limited | invalid_key | error.
 -- rate_* are OpenCage's own `rate` block (0 when the answer had none).
 CREATE TABLE IF NOT EXISTS country_days_tracker_bot.geo_api_usage

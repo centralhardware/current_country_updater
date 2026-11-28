@@ -108,6 +108,9 @@ Every OpenCage request is logged to `country_days_tracker_bot.geo_api_usage` (ke
 
 Pings at 200 km/h or faster (`vel`) are treated as in flight and not geocoded: no country, city or address; the timezone is the last ground ping's.
 
-The report uses the `/pub` Basic auth:
+Read it with SQL / Grafana, e.g. today's requests and the last reported quota:
 
-- `GET /geo/usage` -- per key id: requests today / 30 days, quota hits, errors, last reported limit/remaining/reset, blocked-until; plus cached cells and pings stored ungeocoded in the last 30 days.
+```sql
+SELECT countIf(toDate(ts) = today()) AS today, argMax(rate_remaining, ts) AS remaining, argMax(rate_reset, ts) AS reset
+FROM country_days_tracker_bot.geo_api_usage
+```

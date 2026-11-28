@@ -66,8 +66,6 @@ object Geocoder {
 
     internal fun keyId(key: String) = key.takeLast(4)
 
-    /** Blocked-until, for the usage report; null when the key is usable. */
-    fun blocked(): Instant? = blockedUntil?.takeIf { it.isAfter(Instant.now()) }
 
     /** Cached or fresh geo for [ghash]. */
     suspend fun lookup(ghash: String, lat: Double, lon: Double): GeoResult {
