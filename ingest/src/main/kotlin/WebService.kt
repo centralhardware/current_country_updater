@@ -18,6 +18,7 @@ object WebService {
             install(ContentNegotiation) { json() }
             routing {
                 ownTracks()
+                geo()
                 get("/health") { call.respondText("OK") }
                 get("/calendar/${IngestConfig.CALENDAR_SECRET}/calendar.ics") {
                     call.respondText(CalendarService.buildCalendar(), ContentType("text", "calendar"))

@@ -24,6 +24,14 @@ class OwnTracksTest {
         assertEquals(Geo("", "", "", ""), Geocoder.parseOpenCage("""{"results":[]}"""))
     }
 
+    @Test
+    fun `opencage rate block`() {
+        val r = Geocoder.parseRate("""{"rate":{"limit":2500,"remaining":12,"reset":1764374400},"results":[]}""")
+        assertEquals(Rate(2500, 12, Instant.ofEpochSecond(1764374400)), r)
+        assertNull(Geocoder.parseRate("""{"results":[]}"""), "paid keys answer without a rate block")
+        assertNull(Geocoder.parseRate("not json"))
+    }
+
     /** A real OwnTracks iOS location message: the contract the phone sends. */
     @Test
     fun `app location message to request`() {

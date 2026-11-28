@@ -22,7 +22,9 @@ import java.time.Instant
  *  - the body is one OwnTracks JSON message, `_type` says what it is;
  *  - the reply is a JSON array (the recorder's "friends" list) -- always `[]`;
  *  - a location that cannot be reverse-geocoded or stored gets a 503, so the
- *    phone keeps it in its queue and sends it again.
+ *    phone keeps it in its queue and sends it again -- except when every
+ *    OpenCage key is out of quota: then it is stored ungeocoded (empty
+ *    country, UTC) and `POST /geo/backfill` geocodes it later.
  *
  * Only `location` messages are recorded; everything else (lwt, transition,
  * waypoint, card, status...) is acknowledged and dropped, as the recorder's
@@ -66,10 +68,17 @@ object OwnTracks {
         if (msg.str("_type") != "location") return call.ok()
         val ping = toPing(msg)!!
 
-        val geo = Geocoder.lookup(ping.ghash, ping.lat, ping.lon) ?: run {
-            KSLog.warning("OwnTracks: reverse geocoding failed for ${ping.ghash}; rejecting so the phone retries")
-            call.respond(HttpStatusCode.ServiceUnavailable, "reverse geocoding failed")
-            return
+        val geo = when (val r = Geocoder.lookup(ping.ghash, ping.lat, ping.lon)) {
+            is GeoResult.Found -> r.geo
+            // Out of quota on every key: keep the ping, ungeocoded, rather than
+            // let the phone's queue grow until tomorrow. POST /geo/backfill
+            // fills it in once a key has quota again.
+            GeoResult.QuotaExhausted -> Geo.NONE
+            GeoResult.Failed -> {
+                KSLog.warning("OwnTracks: reverse geocoding failed for ${ping.ghash}; rejecting so the phone retries")
+                call.respond(HttpStatusCode.ServiceUnavailable, "reverse geocoding failed")
+                return
+            }
         }
 
         LocationStore.save(ping.toRequest(geo))

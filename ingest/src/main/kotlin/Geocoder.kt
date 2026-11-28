@@ -10,9 +10,29 @@ import io.ktor.http.*
 import kotliquery.queryOf
 import kotliquery.sessionOf
 import kotlinx.serialization.json.*
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
+import java.util.concurrent.ConcurrentHashMap
 
 /** What reverse geocoding gives a ping, mirroring the OwnTracks Recorder's `geo` record. */
-data class Geo(val cc: String, val addr: String, val locality: String, val tzname: String)
+data class Geo(val cc: String, val addr: String, val locality: String, val tzname: String) {
+    companion object {
+        /** No geocoding at all: what a ping is stored with while every key is out of quota. */
+        val NONE = Geo("", "", "", "")
+    }
+}
+
+sealed interface GeoResult {
+    data class Found(val geo: Geo) : GeoResult
+    /** Every configured key is out of quota (or rate limited) right now. */
+    data object QuotaExhausted : GeoResult
+    /** OpenCage failed in some other way; the phone should retry. */
+    data object Failed : GeoResult
+}
+
+/** OpenCage's `rate` block: the key's daily limit, what is left, and when it resets. */
+data class Rate(val limit: Int, val remaining: Int, val reset: Instant)
 
 /**
  * Reverse geocoding the way the OwnTracks Recorder did it: one OpenCage lookup
@@ -22,6 +42,13 @@ data class Geo(val cc: String, val addr: String, val locality: String, val tznam
  * The time zone comes from OpenCage's `annotations.timezone.name` -- the same
  * IANA name the recorder's offline zone database produced -- so it is cached
  * with the cell instead of needing a lookup library.
+ *
+ * Several keys may be configured (OPENCAGE_KEY, comma-separated). They are
+ * tried in order; a key that reports its quota spent (402, 429, or
+ * `rate.remaining` 0) is skipped until its `rate.reset`. When none is left the
+ * lookup answers [GeoResult.QuotaExhausted] and the ping is stored without
+ * geocoding, to be filled in later by [Backfill]. Every request is logged to
+ * `geo_api_usage`.
  */
 object Geocoder {
 
@@ -34,22 +61,50 @@ object Geocoder {
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    /** Cached or fresh geo for [ghash]; null when OpenCage could not answer. */
-    suspend fun lookup(ghash: String, lat: Double, lon: Double): Geo? {
-        cached(ghash)?.let { return it }
-        val geo = fetch(lat, lon) ?: return null
-        runCatching { store(ghash, geo) }
-            .onFailure { KSLog.warning("Geo cache write failed for $ghash: ${it.message}") }
-        return geo
+    /** Key -> the instant it may be used again. In memory: a restart just re-probes each key once. */
+    private val blockedUntil = ConcurrentHashMap<String, Instant>()
+
+    internal fun keyId(key: String) = key.takeLast(4)
+
+    /** Key id -> blocked-until, for the usage report. */
+    fun blocked(): Map<String, Instant> {
+        val now = Instant.now()
+        return blockedUntil.filterValues { it.isAfter(now) }.mapKeys { keyId(it.key) }
     }
 
-    private suspend fun fetch(lat: Double, lon: Double): Geo? {
-        val key = IngestConfig.OPENCAGE_KEY ?: run {
-            KSLog.warning("OPENCAGE_KEY not set: cannot reverse-geocode")
-            return null
+    /** Cached or fresh geo for [ghash]. */
+    suspend fun lookup(ghash: String, lat: Double, lon: Double): GeoResult {
+        cached(ghash)?.let { return GeoResult.Found(it) }
+        val result = fetch(lat, lon)
+        if (result is GeoResult.Found) {
+            runCatching { store(ghash, result.geo) }
+                .onFailure { KSLog.warning("Geo cache write failed for $ghash: ${it.message}") }
         }
-        return runCatching {
-            val response = client.get(URL) {
+        return result
+    }
+
+    private suspend fun fetch(lat: Double, lon: Double): GeoResult {
+        val keys = IngestConfig.OPENCAGE_KEYS
+        if (keys.isEmpty()) {
+            KSLog.warning("OPENCAGE_KEY not set: cannot reverse-geocode")
+            return GeoResult.Failed
+        }
+        val now = Instant.now()
+        for (key in keys) {
+            if (blockedUntil[key]?.isAfter(now) == true) continue
+            when (val r = fetchWith(key, lat, lon)) {
+                is GeoResult.Found, GeoResult.Failed -> return r
+                GeoResult.QuotaExhausted -> continue // try the next key
+            }
+        }
+        KSLog.warning("OpenCage: every key is out of quota; storing the ping without geocoding")
+        return GeoResult.QuotaExhausted
+    }
+
+    private suspend fun fetchWith(key: String, lat: Double, lon: Double): GeoResult {
+        val id = keyId(key)
+        val response = runCatching {
+            client.get(URL) {
                 parameter("q", "$lat+$lon")
                 parameter("key", key)
                 parameter("abbrv", 1)
@@ -57,14 +112,76 @@ object Geocoder {
                 parameter("limit", 1)
                 parameter("format", "json")
             }
-            if (response.status != HttpStatusCode.OK) {
-                KSLog.warning("OpenCage answered ${response.status}")
-                return null
+        }.getOrElse {
+            KSLog.warning("OpenCage lookup failed (key …$id): ${it.message}")
+            logUsage(id, "error", 0, null)
+            return GeoResult.Failed
+        }
+        val body = runCatching { response.bodyAsText() }.getOrDefault("")
+        val rate = parseRate(body)
+        val status = response.status.value
+        return when (status) {
+            200 -> {
+                val geo = runCatching { parseOpenCage(body) }.getOrElse {
+                    logUsage(id, "error", status, rate)
+                    return GeoResult.Failed
+                }
+                logUsage(id, "ok", status, rate)
+                if (rate != null && rate.remaining <= 0) block(key, rate.reset)
+                GeoResult.Found(geo)
             }
-            parseOpenCage(response.bodyAsText())
-        }.onFailure {
-            KSLog.warning("OpenCage lookup failed: ${it.message}")
-        }.getOrNull()
+            402, 429 -> {
+                logUsage(id, if (status == 402) "quota" else "rate_limited", status, rate)
+                block(key, rate?.reset ?: if (status == 402) nextUtcMidnight() else Instant.now().plusSeconds(60))
+                GeoResult.QuotaExhausted
+            }
+            401, 403 -> {
+                // Invalid, suspended or disabled key: set it aside for an hour, use the others.
+                logUsage(id, "invalid_key", status, rate)
+                block(key, Instant.now().plusSeconds(3600))
+                GeoResult.QuotaExhausted
+            }
+            else -> {
+                KSLog.warning("OpenCage answered $status (key …$id)")
+                logUsage(id, "error", status, rate)
+                GeoResult.Failed
+            }
+        }
+    }
+
+    private fun block(key: String, until: Instant) {
+        blockedUntil[key] = until
+        KSLog.warning("OpenCage key …${keyId(key)} out of quota until $until")
+    }
+
+    private fun nextUtcMidnight(): Instant =
+        LocalDate.now(ZoneOffset.UTC).plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant()
+
+    internal fun parseRate(body: String): Rate? = runCatching {
+        val rate = json.parseToJsonElement(body).jsonObject["rate"]?.jsonObject ?: return null
+        fun n(k: String) = (rate[k] as? JsonPrimitive)?.longOrNull
+        Rate(
+            limit = n("limit")?.toInt() ?: return null,
+            remaining = n("remaining")?.toInt() ?: return null,
+            reset = Instant.ofEpochSecond(n("reset") ?: return null),
+        )
+    }.getOrNull()
+
+    private fun logUsage(keyId: String, outcome: String, status: Int, rate: Rate?) {
+        runCatching {
+            sessionOf(ClickHouse.dataSource).use { s ->
+                s.update(
+                    queryOf(
+                        """
+                        INSERT INTO country_days_tracker_bot.geo_api_usage
+                            (key_id, outcome, status, rate_limit, rate_remaining, rate_reset)
+                        SELECT toString(?), toString(?), toUInt16(?), toInt32(?), toInt32(?), toDateTime(toInt64(?), 'UTC')
+                        """.trimIndent(),
+                        keyId, outcome, status, rate?.limit ?: 0, rate?.remaining ?: 0, rate?.reset?.epochSecond ?: 0L
+                    )
+                )
+            }
+        }.onFailure { KSLog.warning("Geo usage write failed: ${it.message}") }
     }
 
     /**

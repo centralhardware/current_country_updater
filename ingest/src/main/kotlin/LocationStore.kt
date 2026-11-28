@@ -98,7 +98,7 @@ object LocationStore {
         }
     }
 
-    private fun String.toCountry() = Locale.of("en", this).displayCountry
+    internal fun String.toCountry() = Locale.of("en", this).displayCountry
 }
 
 /**

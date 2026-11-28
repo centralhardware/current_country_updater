@@ -12,8 +12,10 @@ object IngestConfig {
     val LOCATION_USER: String? = System.getenv("LOCATION_USER")
     val LOCATION_PASSWORD: String? = System.getenv("LOCATION_PASSWORD")
 
-    // OpenCage key for POST /pub reverse geocoding; the recorder's "opencage:KEY" form is accepted.
-    val OPENCAGE_KEY: String? = System.getenv("OPENCAGE_KEY")?.removePrefix("opencage:")?.takeIf { it.isNotBlank() }
+    // OpenCage keys for POST /pub reverse geocoding, comma-separated and tried
+    // in order; the recorder's "opencage:KEY" form is accepted for each.
+    val OPENCAGE_KEYS: List<String> = System.getenv("OPENCAGE_KEY").orEmpty()
+        .split(',').map { it.trim().removePrefix("opencage:").trim() }.filter { it.isNotBlank() }
 
     // Path secret of the public calendar feed.
     val CALENDAR_SECRET: String = System.getenv("CALENDAR_SECRET")
