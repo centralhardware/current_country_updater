@@ -70,11 +70,11 @@ object OwnTracks {
 
         val geo = if (ping.inFlight()) {
             // Airborne: the cell under a plane is a new one every few seconds
-            // and its address means nothing, so don't spend quota on it. The
-            // ping keeps the country and zone of the last ping on the ground
-            // (the departure), with no city or address.
+            // and its address means nothing, so don't spend quota on it. No
+            // country is stored (the air is not a country day); the zone is
+            // the last ground ping's (the departure), so wall time stays sane.
             KSLog.info("OwnTracks: in flight (${ping.msg.int("vel")} km/h), skipping geocoding")
-            Geocoder.lastGround()?.copy(addr = "", locality = "") ?: Geo.IN_FLIGHT
+            Geocoder.lastGround()?.let { Geo.IN_FLIGHT.copy(tzname = it.tzname.ifBlank { "UTC" }) } ?: Geo.IN_FLIGHT
         } else when (val r = Geocoder.lookup(ping.ghash, ping.lat, ping.lon)) {
             is GeoResult.Found -> r.geo
             // Key out of quota: keep the ping, ungeocoded, rather than
